@@ -9,7 +9,7 @@ sudo apt-get install libglfw3
 sudo apt-get install libglfw3-dev
 ```
 
-Além dessa forma, é possível compilar a biblioteca GLFW diretamente dos ![arquivos fontes](https://www.glfw.org/download.html), configurando-a para seu gerenciador de janelas.
+Além dessa forma, é possível compilar a biblioteca GLFW diretamente dos [arquivos fontes](https://www.glfw.org/download.html), configurando-a para seu gerenciador de janelas.
 
 ## 🚀 Compilando e Executando
 
