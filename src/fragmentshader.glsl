@@ -22,7 +22,7 @@ vec3 getNormal(in vec3 pos) {
     normal.x = (sdf(pos + h.xyy) - sdf(pos)) / hOffset;
 	normal.y = (sdf(pos + h.yxy) - sdf(pos)) / hOffset;
 	normal.z = (sdf(pos + h.yyx) - sdf(pos)) / hOffset;
-	return normalize(normal);
+	return (normalize(normal) + vec3(1.0)/2.);
 }
 
 void main()

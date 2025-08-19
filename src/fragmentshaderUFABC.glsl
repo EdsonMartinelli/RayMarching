@@ -92,8 +92,9 @@ vec3 getNormal(in vec3 pos) {
     normal.x = (sdf(pos + h.xyy) - sdf(pos)) / hOffset;
 	normal.y = (sdf(pos + h.yxy) - sdf(pos)) / hOffset;
 	normal.z = (sdf(pos + h.yyx) - sdf(pos)) / hOffset;
-	return normalize(normal);
+	return (normalize(normal) + vec3(1.0)/2.);
 }
+
 
 void main()
 {
@@ -128,8 +129,12 @@ void main()
         vec3 position = origin + direction * t;
         vec3 normal = getNormal(position);
         //color = vec3((count/MAX_STEP), 0.0, 1.0 - (count/MAX_STEP));
-        color = normal;
+        color =  normal ;
+
+        
+       
     }
+    float gamma = 2.2;
     fragColor = vec4(color,1.0);
 
 };
