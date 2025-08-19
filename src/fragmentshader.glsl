@@ -25,6 +25,11 @@ vec3 getNormal(in vec3 pos) {
 	return (normalize(normal) + vec3(1.0)/2.);
 }
 
+vec3 gammaCorrection(vec3 color){
+    float gamma = 2.2;
+    return pow(color, vec3(1.0/gamma)); 
+}
+
 void main()
 {
     vec2 uv = (gl_FragCoord.xy * 2.0 - iResolution.xy)/iResolution.y;  
@@ -60,6 +65,6 @@ void main()
         //color = vec3((count/MAX_STEP), 0.0, 1.0 - (count/MAX_STEP));
         color = normal;
     }
-    fragColor = vec4(color,1.0);
+    fragColor = vec4(gammaCorrection(color),1.0);
 
 };

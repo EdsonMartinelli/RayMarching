@@ -95,6 +95,10 @@ vec3 getNormal(in vec3 pos) {
 	return (normalize(normal) + vec3(1.0)/2.);
 }
 
+vec3 gammaCorrection(vec3 color){
+    float gamma = 2.2;
+    return pow(color, vec3(1.0/gamma)); 
+}
 
 void main()
 {
@@ -134,7 +138,6 @@ void main()
         
        
     }
-    float gamma = 2.2;
-    fragColor = vec4(color,1.0);
+    fragColor = vec4(gammaCorrection(color),1.0);
 
 };
