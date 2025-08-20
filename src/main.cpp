@@ -1,3 +1,12 @@
+/**
+ * @file main.cpp
+ * @brief Main project file.
+ *
+ * Main project file. This setup the libraries GLFW (window manager)
+ * and GLAD (OpenGL Loader), create vertices to render, load shaders and
+ * create the application main loop.
+ */
+
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <iostream>
@@ -5,19 +14,50 @@
 #include <fstream>
 #include <commun/shader.hpp>
 
-int WINDOW_WIDTH = 800;
-int WINDOW_HEIGHT = 600;
+int WINDOW_WIDTH = 800; /**< Global window width size. */
+int WINDOW_HEIGHT = 600; /**< Global window height size. */
 
+/**
+ * @brief Callback function for error handler.
+ * 
+ * Error handler function that prints the error description in standard output.
+ * This is used as callback function by the GLFW Library when a error is caught.
+ * 
+ * @param [in] error Error number.
+ * @param [in] descriptor Strig with error description.
+ */
 void errorCallback(int error, const char* description)
 {
      std::cout << "Error: " << description << std::endl;
 }
 
+/**
+ * @brief Window key handler function callback.
+ * 
+ * Key handler function that prints the keyboard key number in standard output.
+ * This is used as callback function by the GLFW Library when a key is pressed, released or held down.
+ * 
+ * @param [in] window Window pointer to indicate the window of the input.
+ * @param [in] key Keyboard key number.
+ * @param [in] scancode Platform-specific scancode.
+ * @param [in] action Actions like press, release, repeat.
+ * @param [in] mods Modifier bit to check ALT, CTRL, SHIFT held down and check Caps Lock and Num Lock is enable.
+ */
 void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
     std::cout << "Key: " << key << std::endl;
 }
 
+/**
+ * @brief Window resize handler function callback.
+ * 
+ * This used as callback by GLFW when window got resized. This modify WINDOW_WIDTH and WINDOW_HEIGHT
+ * globals used in uniforms and change OpenGL viewport to current window size.
+ * 
+ * @param window Window pointer to indicate the window resized.
+ * @param width Current window width size.
+ * @param height Current window height size.
+ */
 void framebufferSizeCallback(GLFWwindow* window, int width, int height)
 {
     WINDOW_WIDTH = width;
@@ -56,8 +96,8 @@ int main() {
 
     glViewport(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT);
 
-    unsigned int vertexShader = createShader(GL_VERTEX_SHADER, "src/vertexshader.glsl");
-    unsigned int fragmentShader = createShader(GL_FRAGMENT_SHADER, "src/fragmentshaderUFABC.glsl");
+    unsigned int vertexShader = createShader(GL_VERTEX_SHADER, "src/vertexshader.vert");
+    unsigned int fragmentShader = createShader(GL_FRAGMENT_SHADER, "src/fragmentshaderUFABC.frag");
     unsigned int shaderProgram = createShaderProgram(vertexShader, fragmentShader); 
 
     float vertices[] = {
