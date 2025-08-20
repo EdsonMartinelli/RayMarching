@@ -20,3 +20,13 @@ A execução do arquivo **run.sh** na raiz do projeto cria uma pasta build, comp
 ```sh
 ./run.sh
 ```
+
+## 📘 Gerando Documentação
+
+Para gerar a documentação é necessario instalar o Doxygen e executar:
+
+```sh
+doxygen Doxyfile
+```
+
+Uma pasta docs será criarada e os arquivos web e latex estarão disponíveis nela.
