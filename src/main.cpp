@@ -5,6 +5,9 @@
  * Main project file. This setup the libraries GLFW (window manager)
  * and GLAD (OpenGL Loader), create vertices to render, load shaders and
  * create the application main loop.
+ * 
+ * @author Edson Martinelli
+ * @date 2025
  */
 
 #include <glad/glad.h>
@@ -24,7 +27,7 @@ int WINDOW_HEIGHT = 600; /**< Global window height size. */
  * This is used as callback function by the GLFW Library when a error is caught.
  * 
  * @param [in] error Error number.
- * @param [in] descriptor Strig with error description.
+ * @param [in] description Strig with error description.
  */
 void errorCallback(int error, const char* description)
 {
@@ -65,6 +68,13 @@ void framebufferSizeCallback(GLFWwindow* window, int width, int height)
     glViewport(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT);
 }
 
+/**
+ * @brief Main function of program to generate image.
+ * 
+ * Main function: Initialized GLFW and GLAD, setup callback functions, read the shaders, create the vertices
+ * square that encompasses the entire viewport and execute the main loop to generate the image in the window.
+ * 
+ */
 int main() {
     if (!glfwInit()) {
         std::cerr << "Failed to initialize GLFW\n";

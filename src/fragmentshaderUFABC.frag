@@ -1,7 +1,19 @@
-#version 330 core
-out vec4 fragColor;
+/**
+ * @brief UFABC logotype and plane renderized by Ray Maching in 3D.
+ *
+ * UFABC logo in the center of scene, SDF plane (space divider) and
+ * camera (left hand rule) looking at scene center. This configuration
+ *  is renderized by a standard Ray Marching method with maximum distance equals 32.0.
+ *
+ * @author Edson Martinelli
+ * @date 2025
+ */
 
-uniform vec2 iResolution;
+#version 330 core
+
+out vec4 fragColor;/**< Output color of the pixel. */
+
+uniform vec2 iResolution;/**< Viewport and window resolution(x = width, y = height). */
 
 float smin( float a, float b, float k ){
     k *= 4.0;
@@ -81,10 +93,28 @@ float sdfFloor(vec3 p){
     return p.y + 0.925;
 }
 
+/**
+ * @brief Complete World SDF .
+ *
+ * SDF function that combines Sphere SDF and plane SDF using min funcion at a given point.
+ *
+ * @param [in] pos Normalized pixel position.
+ * @return The correct value of SDF at the position.
+ */
 float sdf(vec3 p){
     return min(sdfUFABC(p), sdfFloor(p));
 }
 
+/**
+ * @brief Get implicit functions normal.
+ *
+ * Get normal of a given point in the world using a numerical differentiation (Forward Difference).
+ * The small value of the method is applied in the three axes (x, y, z) and the final result is normalized to all
+ * values stays between 0.0 and 1.0 because it is only used to color.
+ *
+ * @param [in] pos Normalized pixel position.
+ * @return Normal vector at the point.
+ */
 vec3 getNormal(in vec3 pos) {	
 	vec3 normal;
     float hOffset = 0.0001;
@@ -95,11 +125,26 @@ vec3 getNormal(in vec3 pos) {
 	return (normalize(normal) + vec3(1.0)/2.);
 }
 
+/**
+ * @brief Apply gamma correction to a color.
+ *
+ * Find the correct color based in the eyes structure.
+ *
+ * @param [in] color color to be correction.
+ * @return color with gamma correction.
+ */
 vec3 gammaCorrection(vec3 color){
     float gamma = 2.2;
     return pow(color, vec3(1.0/gamma)); 
 }
 
+/**
+ * @brief Main function to execute the scene.
+ *
+ * The main function responsible for normalize pixel position, create camera and
+ * run Ray Marching algorithm, given the correct color of the pixel in the fragColor.
+ *
+ */
 void main()
 {
     vec2 uv = (gl_FragCoord.xy * 2.0 - iResolution.xy)/iResolution.y;  
@@ -133,10 +178,7 @@ void main()
         vec3 position = origin + direction * t;
         vec3 normal = getNormal(position);
         //color = vec3((count/MAX_STEP), 0.0, 1.0 - (count/MAX_STEP));
-        color =  normal ;
-
-        
-       
+        color =  normal;       
     }
     fragColor = vec4(gammaCorrection(color),1.0);
 
