@@ -9,23 +9,54 @@
  * @date 2025
  */
 
-#version 330 core
+#version 430 core
 
 out vec4 fragColor;/**< Output color of the pixel. */
 
 uniform vec2 iResolution;/**< Viewport and window resolution(x = width, y = height). */
 
-float smin( float a, float b, float k ){
-    k *= 4.0;
-    float h = max( k - abs(a - b), 0.0 )/ k;
-    return min(a, b) - h * h * k * (1.0 / 4.0);
+/**
+ * @brief Smooth minimum function.
+ *
+ * A quadractic polynomial smooth mininum function.
+ *
+ * @param [in] a Point value in the first SDF.
+ * @param [in] b Point value in the second SDF.
+ * @param [in] k Smooth value parameter.
+ * @return Smooth value for given values.
+ */
+float smoothMin( float a, float b, float k ){
+    float d = abs(a - b);
+    float h = max(k - d, 0.0);
+    return min(a, b) - h * h * (1.0 / (4.0 * k));
 }
 
+/**
+ * @brief Extrusion operation for 2D SDFs.
+ *
+ * Transform a 2D SDF in a 3D SDF using extrusion.
+ *
+ * @param [in] p Current normalized pixel position.
+ * @param [in] sdf 2D SDF value for pixel position.
+ * @param [in] h Extrusion size.
+ * @return Correct value of 3D SDF at p point.
+ */
 float opExtrusion( in vec3 p, in float sdf, in float h ){
     vec2 w = vec2( sdf, abs(p.z) - h );
   	return min(max(w.x, w.y), 0.0) + length(max(w, 0.0));
 }
 
+/**
+ * @brief Calculate Y coordenate of the linear equation and return the point.
+ *
+ * Calculate Y coordenate given a origin point in 2D, a slope and x coordenate. After that, this
+ * function returns a point with given x e calculate Y.
+ *
+ * @param [in] origin A point in the line.
+ * @param [in] sdf Equation slope.
+ * @param [in] h Second point X coordenate.
+ * @return A point (2D) with X coordenate and correspondent Y.
+ */
 vec2 calculateLinearPoint(vec2 origin, float m, float x){
     float c = (m * origin.x) - origin.y;
     float y = (m * x) - c;
@@ -80,7 +111,7 @@ float sdfUFABC(vec3 p)
     float circleCutter = sdCircle(centerC, insideCircleRadius);
     float planeCutter = sdPlane(p.xy);
 
-    float cutter = min(smin(boxCutter, circleCutter, 0.015), planeCutter);
+    float cutter = min(smoothMin(boxCutter, circleCutter, 0.060), planeCutter);
 
     float yellowLines = max(box, -cutter);
 
@@ -89,6 +120,16 @@ float sdfUFABC(vec3 p)
     return opExtrusion(p,final, 0.5);
 }
 
+
+/**
+ * @brief Plane SDF.
+ *
+ * A simples SDF function that divide the entire world in two parts: positive, if 
+ * position is greatem than -0.925; negative, if position is less than -0.925.
+ *
+ * @param [in] pos Normalized pixel position.
+ * @return The correct value of SDF at the position.
+ */
 float sdfFloor(vec3 p){
     return p.y + 0.925;
 }
@@ -96,7 +137,7 @@ float sdfFloor(vec3 p){
 /**
  * @brief Complete World SDF .
  *
- * SDF function that combines Sphere SDF and plane SDF using min funcion at a given point.
+ * SDF function that combines UFABC logo SDF and plane SDF using min funcion at a given point.
  *
  * @param [in] pos Normalized pixel position.
  * @return The correct value of SDF at the position.
@@ -181,5 +222,4 @@ void main()
         color =  normal;       
     }
     fragColor = vec4(gammaCorrection(color),1.0);
-
 };

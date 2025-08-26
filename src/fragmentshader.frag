@@ -8,7 +8,7 @@
  * @author Edson Martinelli
  * @date 2025
  */
-#version 330 core
+#version 430 core
 
 out vec4 fragColor;/**< Output color of the pixel. */
 
