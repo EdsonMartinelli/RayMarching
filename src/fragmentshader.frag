@@ -10,9 +10,18 @@
  */
 #version 430 core
 
-layout (location = 0) out vec4 fragColor;/**< Output color of the pixel. */
 
-layout (location = 0) uniform vec2 iResolution;/**< Viewport and window resolution(x = width, y = height). */
+/**
+ * @ingroup FragVariables
+ * @brief Output color of the pixel.
+*/
+layout (location = 0) out vec4 fragColor;
+
+/**
+ * @ingroup FragVariables
+ * @brief Viewport and window resolution(x = width, y = height).
+*/
+layout (location = 0) uniform vec2 iResolution;
 
 /**
  * @brief Sphere SDF.
