@@ -344,4 +344,4 @@ void main()
         color =  normal;       
     }
     fragColor = vec4(gammaCorrection(color),1.0);
-};
+}
