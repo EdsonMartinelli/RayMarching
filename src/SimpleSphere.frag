@@ -10,7 +10,6 @@
  */
 #version 430 core
 
-
 /**
  * @ingroup FragVariables
  * @brief Output color of the pixel.
