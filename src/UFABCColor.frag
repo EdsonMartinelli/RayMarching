@@ -11,17 +11,6 @@
 
 #version 430 core
 
-struct Material{
-    vec3 color;
-    float value;
-};
-
-struct RayInfo{
-    Material m;
-    float dist;
-    float count;
-};
-
 /**
  * @defgroup FragVariables Fragment Variables
  * @brief Variables related to fragment shader input, output and uniforms.
@@ -30,6 +19,11 @@ struct RayInfo{
 /**
  * @defgroup CameraVariables Camera Variables
  * @brief Variables related to camera system.
+*/
+
+/**
+ * @defgroup ObjVariables Object Variables
+ * @brief Variables related to objects in scene.
 */
 
 /**
@@ -48,6 +42,25 @@ layout (location = 0) out vec4 fragColor;
  * @brief Viewport and window resolution(x = width, y = height).
 */
 layout (location = 0) uniform vec2 iResolution;
+
+/**
+ * @ingroup ObjVariables
+ * @brief Object hit struct.
+ */
+struct ObjectHit{
+    vec3 color; /**< Object point color. */  
+    float value; /**< Value at object point. */ 
+};
+
+/**
+ * @ingroup RayVariables
+ * @brief Ray information struct.
+*/
+struct RayInfo{
+    ObjectHit objHit; /**< Object hit at the point */  
+    float dist; /**< Distance from camera origin */  
+    float count; /**< Steps from camera origin */
+};
 
 /**
  * @ingroup CameraVariables
@@ -186,10 +199,10 @@ float sdCircle(vec2 p, float r){
  * SDF function of UFABC Logo in 3D space.
  *
  * @param [in] p Normalized 3D space position.
- * @return The correct value of SDF at the position.
+ * @return The struct ObjectHit with the object color and the correct value of SDF at the position.
  */
 
-Material sdfUFABC(vec3 p){
+ObjectHit sdfUFABC(vec3 p){
     float insideRadius = 0.42;
     float outsideRadius = 0.5;
     float halfDistanceCenterX = outsideRadius - ((outsideRadius - insideRadius) / 2.0);
@@ -221,18 +234,18 @@ Material sdfUFABC(vec3 p){
 
     //float final = min(greenArcs, yellowLines);
     
-    Material m;
+    ObjectHit objHit;
     if(yellowLines < greenArcs){
         vec3 trueColor = vec3(254.,206.,2.);
-        m.color = trueColor / 255.;
-        m.value = opExtrusion(p, yellowLines, 0.5);
-        return m;
+        objHit.color = trueColor / 255.;
+        objHit.value = opExtrusion(p, yellowLines, 0.5);
+        return objHit;
     }
 
     vec3 trueColor = vec3(5.,90.,57.);
-    m.color = trueColor / 255.;
-    m.value = opExtrusion(p, greenArcs, 0.5);
-    return m;
+    objHit.color = trueColor / 255.;
+    objHit.value = opExtrusion(p, greenArcs, 0.5);
+    return objHit;
 }
 
 
@@ -243,13 +256,13 @@ Material sdfUFABC(vec3 p){
  * position is greatem than -1.0; negative, if position is less than -1.0.
  *
  * @param [in] p Normalized 3D space position.
- * @return The correct value of SDF at the position.
+ * @return The struct ObjectHit with the object color and the correct value of SDF at the position.
  */
-Material sdfFloor(vec3 p){
-    Material m;
-    m.color= vec3(1.,0.,0.);
-    m.value = p.y + 1.0;
-    return m;
+ObjectHit sdfFloor(vec3 p){
+    ObjectHit objHit;
+    objHit.color= vec3(1.,0.,0.);
+    objHit.value = p.y + 1.0;
+    return objHit;
 }
 
 /**
@@ -258,27 +271,26 @@ Material sdfFloor(vec3 p){
  * SDF function that combines UFABC logo SDF and plane SDF using min funcion at a given point.
  *
  * @param [in] p Normalized 3D space position.
- * @return The correct value of SDF at the position.
+ * @return The struct ObjectHit with the object color and the correct value of SDF at the position.
  */
-Material sdf(vec3 p){
-    Material mUFABC = sdfUFABC(p);
-    Material mFloor = sdfFloor(p);
+ObjectHit sdf(vec3 p){
+    ObjectHit objHitUFABC = sdfUFABC(p);
+    ObjectHit objHitFloor = sdfFloor(p);
 
-    if(mUFABC.value < mFloor.value ){
-        return mUFABC;
+    if(objHitUFABC.value < objHitFloor.value){
+        return objHitUFABC;
     }
-
-    return mFloor;
+    return objHitFloor;
 }
 
 /**
  * @brief Get implicit functions normal.
  *
  * Get normal of a given point in the world using a numerical differentiation (Forward Difference).
- * The small value of the method is applied in the three axes (x, y, z) and the final result is normalized to all
- * values stays between 0.0 and 1.0 because it is only used to color.
+ * The small value of the method is applied in the three axes (x, y, z).
  *
  * @param [in] p Normalized 3D space position.
+ * @param [in] pointValue SDF value at point p.
  * @return Normal vector at the point.
  */
 vec3 getNormal(in vec3 p, float pointValue) {	
@@ -340,22 +352,23 @@ vec3 getDirection(vec2 uv){
  * to find solid hit or reach the maximum distance.
  *
  * @param [in] direction Ray direction.
- * @return Distance of origin given a direction.
+ * @return Struct RayInfo containing the object hit information, distance of origin given a direction
+ * and steps.
  */
 RayInfo rayMarching(vec3 direction){
     float count = 0.0;
     float t = 0.0;
-    Material m;
+    ObjectHit objHit;
     while(t < D) {
-        m = sdf(origin + direction * t);
-        float r = m.value;
+        objHit = sdf(origin + direction * t);
+        float r = objHit.value;
         if(r < e) break;
         if(count > MAX_STEP) break;
         t += r;
         count = count + 1;
     }
     RayInfo ri;
-    ri.m = m;
+    ri.objHit = objHit;
     ri.dist = t;
     ri.count = count;
     return ri;
@@ -376,9 +389,10 @@ void main()
     
     if(ri.dist < D) {
         vec3 position = origin + direction * ri.dist;
-        vec3 normal = getNormal(position, (ri.m).value);
-        vec3 x = normal * (dot(normal, (ri.m).color));
-        color =  ((ri.m).color + clamp(x, vec3(-1.,-1.,-1.), vec3(1.,1.,1.))) / 2.;       
+        vec3 normal = getNormal(position, (ri.objHit).value);
+        vec3 objColor = (ri.objHit).color;
+        vec3 x = normal * (dot(normal, objColor));
+        color =  (objColor + clamp(x, vec3(-1.,-1.,-1.), vec3(1.,1.,1.))) / 2.;       
     }
     fragColor = vec4(gammaCorrection(color),1.0);
 }
