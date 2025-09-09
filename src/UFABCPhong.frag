@@ -414,11 +414,12 @@ void main()
         //Blinn-Phong
         vec3 ambientColor = (objColor * 0.3) * (lightColor * 0.3);
         vec3 lightDirection = normalize(lightOrigin - position);
-        float facing = dot(normal, lightDirection);
-        vec3 diffuseColor = (objColor * 0.7) * (lightColor * 0.7) * max(facing, 0);
+        float diffuseReflection = dot(normal, lightDirection);
+        vec3 diffuseColor = (objColor * 0.7) * (lightColor * 0.7) * max(diffuseReflection, 0);
         vec3 halfwayVector = normalize(cameraDirection + lightDirection); 
         float shininess = 5.;
-        vec3 specularColor = max(facing, 0.) * (objColor * 9.) * (lightColor * 9.) * pow(max(dot(normal, halfwayVector), 0.0), shininess);
+        float facing = diffuseReflection > 0 ?  1 : 0;
+        vec3 specularColor = facing * (objColor * 9.) * (lightColor * 9.) * pow(max(dot(normal, halfwayVector), 0.0), shininess);
         color = ambientColor + diffuseColor + specularColor;   
     }
     fragColor = vec4(gammaCorrection(color),1.0);
