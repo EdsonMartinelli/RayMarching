@@ -2,8 +2,8 @@
  * @brief UFABC logotype and plane renderized by Ray Maching in 3D.
  *
  * UFABC logo in the center of scene, SDF plane (space divider) and
- * camera (left hand rule) looking at scene center. This configuration
- *  is renderized by a standard Ray Marching method with maximum distance equals 32.0.
+ * camera looking at scene center (right-hand coordinate system). This configuration
+ * is renderized by a standard Ray Marching method with maximum distance equals 32.0.
  *
  * @author Edson Martinelli
  * @date 2025
@@ -411,6 +411,7 @@ void main()
         vec3 normal = getNormal(position, (ri.objHit).value);
         vec3 objColor = (ri.objHit).color;
 
+        //Blinn-Phong
         vec3 ambientColor = (objColor * 0.3) * (lightColor * 0.3);
         vec3 lightDirection = normalize(lightOrigin - position);
         float facing = dot(normal, lightDirection);

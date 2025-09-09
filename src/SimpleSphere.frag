@@ -2,7 +2,7 @@
  * @brief A simple sphere and plane renderized by Ray Maching in 3D.
  *
  * A simple SDF sphere in the center of scene, SDF plane (space divider) and
- * camera in z = 2.0 (left hand rule) looking at scene center. This configuration
+ * camera in z = 2.0 looking at scene center (right-hand coordinate system). This configuration
  * is renderized by a standard Ray Marching method with maximum distance equals 32.0.
  *
  * @author Edson Martinelli
