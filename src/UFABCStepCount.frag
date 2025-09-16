@@ -71,7 +71,7 @@ struct RayInfo{
  * @ingroup CameraVariables
  * @brief Rays origin.
 */
-vec3 origin = vec3(1.0, 0.0, 2.0);
+vec3 origin = vec3(-3.0, 0.5, 0.5);
 /**
  * @ingroup CameraVariables
  * @brief Rays target position.
@@ -109,7 +109,7 @@ float e = 0.0001;
  * @ingroup RayVariables
  * @brief Maximun ray steps.
 */
-float MAX_STEP = 256.0;
+float MAX_STEP = 32.0;
 
 /**
  * @brief Smooth minimum function.
@@ -160,23 +160,6 @@ vec2 calculateLinearPoint(vec2 origin, float m, float x){
 }
 
 /**
- * @brief Plane SDF with sin function used to cut. 
- *
- * A SDF function that use sin function to divide the entire world in two parts using a wave
- * shape.
- *
- * @param [in] p Normalized 2D pixel position.
- * @return The correct value of SDF at the position.
- */
-float sdPlaneCutter(vec2 p){
-    p.x = p.x + 0.82;
-    p.y = p.y - 0.245;
-    p.x = p.x + 0.09*sin(9.*p.y);
-    return p.x;
-}
-
-
-/**
  * @brief Oriented Box SDF.
  *
  * A oriented box function given by center point of its origin side, its slope, thickness and 
@@ -211,6 +194,30 @@ float sdOBox(vec2 p, vec2 sideOriginCenter, float m, float xEndCenter, float th)
 float sdCircle(vec2 p, float r){
     return length(p) - r;
 }
+
+/**
+ * @brief Plane SDF with sin function used to cut. 
+ *
+ * A SDF function that use sin function to divide the entire world in two parts using a wave
+ * shape.
+ *
+ * @param [in] p Normalized 2D pixel position.
+ * @return The correct value of SDF at the position.
+ */
+float sdPlaneCutter(vec2 p){
+    p.x = p.x + 0.82;
+    p.y = p.y - 0.245;
+    p.x = p.x + 0.09*sin(9.*p.y);
+    return p.x;
+}
+// float sdPlaneCutter(vec2 p){
+//     vec2 offset1 = vec2(1.2, -0.7 + 0.075);
+//     vec2 offset2 = vec2(0.95, -0.12 + 0.075);
+//     float c1 = sdCircle(p + offset1, 0.3);
+//     float c2 = sdCircle(p + offset2, 0.22);
+//     return smoothMin(c1, c2, 0.42);
+// }
+
 
 /**
  * @brief UFABC logo SDF.
@@ -267,6 +274,7 @@ ObjectHit sdfUFABC(vec3 p){
     return objHit;
 }
 
+
 /**
  * @brief Plane SDF.
  *
@@ -301,26 +309,6 @@ ObjectHit sdf(vec3 p){
         min = objHitUFABC;
     }
     return min;
-}
-
-/**
- * @brief Get implicit functions normal.
- *
- * Get normal of a given point in the world using a numerical differentiation (Forward Difference).
- * The small value of the method is applied in the three axes (x, y, z).
- *
- * @param [in] p Normalized 3D space position.
- * @param [in] pointValue SDF value at point p.
- * @return Normal vector at the point.
- */
-vec3 getNormal(in vec3 p, float pointValue) {	
-	vec3 normal;
-    float hOffset = 0.0001;
-	vec2 h = vec2(hOffset, 0.0);
-    normal.x = (sdf(p + h.xyy).value - pointValue) / hOffset;
-	normal.y = (sdf(p + h.yxy).value - pointValue) / hOffset;
-	normal.z = (sdf(p + h.yyx).value - pointValue) / hOffset;
-	return normalize(normal);
 }
 
 /**
@@ -395,27 +383,6 @@ RayInfo rayMarching(vec3 direction){
 }
 
 /**
- * @brief Blinn-Phong illumination model.
- *
- * Blinn-Phong Illuminition model.
- *
- */
-vec3 phongIllumination(vec3 cameraDirection, RayInfo ri){
-    vec3 position = origin + cameraDirection * ri.dist;
-    vec3 normal = getNormal(position, (ri.objHit).value);
-    vec3 objColor = (ri.objHit).color;
-    vec3 ambientColor = (objColor * 0.3) * (lightColor * 0.3);
-    vec3 lightDirection = normalize(lightOrigin - position);
-    float diffuseReflection = dot(normal, lightDirection);
-    vec3 diffuseColor = (objColor * 0.7) * (lightColor * 0.7) * max(diffuseReflection, 0);
-    vec3 halfwayVector = normalize(cameraDirection + lightDirection); 
-    float shininess = 5.;
-    float facing = diffuseReflection > 0 ?  1 : 0;
-    vec3 specularColor = facing * (objColor * 9.) * (lightColor * 9.) * pow(max(dot(normal, halfwayVector), 0.0), shininess);
-    return ambientColor + diffuseColor + specularColor;
-}
-
-/**
  * @brief Main function to execute the scene.
  *
  * The main function responsible to indicate the correct color of the pixel in the fragColor.
@@ -430,8 +397,8 @@ void main()
     vec3 color = vec3(0.0,0.0,0.0);
     
     if(ri.dist < D) {
-        color = phongIllumination(cameraDirection, ri);
+        float count = ri.count;
+        color = vec3(count / MAX_STEP, 0. , 1. - (count / MAX_STEP));
     }
-    
     fragColor = vec4(gammaCorrection(color),1.0);
 }
