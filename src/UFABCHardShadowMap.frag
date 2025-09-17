@@ -87,7 +87,7 @@ vec3 vup = normalize(vec3(0.0, 1.0, 0.0));
  * @ingroup LightVariables
  * @brief Light point position. 
 */
-vec3 lightOrigin = vec3(0.0, 0.0, 3.0);
+vec3 lightOrigin = vec3(0.0, 2.0, 3.0);
 
 /**
  * @ingroup LightVariables
@@ -394,25 +394,24 @@ RayInfo rayMarching(vec3 direction){
     return ri;
 }
 
-/**
- * @brief Blinn-Phong illumination model.
- *
- * Phong Illuminition model with Blinn optimazation.
- *
- */
-vec3 phongIllumination(vec3 cameraDirection, RayInfo ri){
-    vec3 position = origin + cameraDirection * ri.dist;
-    vec3 normal = getNormal(position, (ri.objHit).value);
-    vec3 objColor = (ri.objHit).color;
-    vec3 ambientColor = (objColor * 0.3) * (lightColor * 0.3);
-    vec3 lightDirection = normalize(lightOrigin - position);
-    float diffuseReflection = dot(normal, lightDirection);
-    vec3 diffuseColor = (objColor * 0.7) * (lightColor * 0.7) * max(diffuseReflection, 0);
-    vec3 halfwayVector = normalize(cameraDirection + lightDirection); 
-    float shininess = 5.;
-    float facing = diffuseReflection > 0 ?  1 : 0;
-    vec3 specularColor = facing * (objColor * 9.) * (lightColor * 9.) * pow(max(dot(normal, halfwayVector), 0.0), shininess);
-    return ambientColor + diffuseColor + specularColor;
+
+RayInfo rayMarchingShadow(vec3 originPoint, vec3 direction, float MAX_DIST){
+    float count = 0.0;
+    float t = 0.0;
+    ObjectHit objHit;
+    while(t < MAX_DIST) {
+        objHit = sdf(originPoint + direction * t);
+        float r = objHit.value;
+        if(r < e) break;
+        if(count > MAX_STEP) break;
+        t += r;
+        count = count + 1;
+    }
+    RayInfo ri;
+    ri.objHit = objHit;
+    ri.dist = t;
+    ri.count = count;
+    return ri;
 }
 
 /**
@@ -430,7 +429,19 @@ void main()
     vec3 color = vec3(0.0,0.0,0.0);
     
     if(ri.dist < D) {
-        color = phongIllumination(cameraDirection, ri);
+         vec3 position = origin + cameraDirection * ri.dist;
+        vec3 normal = getNormal(position, (ri.objHit).value);
+        vec3 objColor = (ri.objHit).color;
+        vec3 lightDirection = lightOrigin - position;
+        float MAX_DIST = length(lightDirection);
+        vec3 normalizedLightDirection = lightDirection / MAX_DIST;
+        RayInfo riShadow = rayMarchingShadow(position + (normal * e), normalizedLightDirection, MAX_DIST);
+
+        if(riShadow.dist <= MAX_DIST - e){
+            color = vec3(0.);
+        } else {
+            color = vec3(1 - (MAX_DIST / 5.));
+        }     
     }
 
     fragColor = vec4(gammaCorrection(color),1.0);
