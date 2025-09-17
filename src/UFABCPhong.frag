@@ -399,6 +399,9 @@ RayInfo rayMarching(vec3 direction){
  *
  * Phong Illuminition model with Blinn optimazation.
  *
+ * @param [in] cameraDirection Camera direction.
+ * @param [in] ri Struct RayInfo containing Ray Marching information.
+ * @return Correct color for phong illumination. 
  */
 vec3 phongIllumination(vec3 cameraDirection, RayInfo ri){
     vec3 position = origin + cameraDirection * ri.dist;

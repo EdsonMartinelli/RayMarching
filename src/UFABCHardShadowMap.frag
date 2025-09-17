@@ -394,7 +394,18 @@ RayInfo rayMarching(vec3 direction){
     return ri;
 }
 
-
+/**
+ * @brief Ray Marching algorithm for shadows.
+ *
+ * Starting at the hit point, advance the ray based on the direction of the light and value given by
+ * the SDF, seeking to reach the maximum distance or hit a solid object to create a shadow.
+ *
+ * @param [in] originPoint Solid hit point.
+ * @param [in] direction Ray direction towards the light origin.
+ * @param [in] MAX_DIST Biggest distance between the solid hit point and the light origin.
+ * @return Struct RayInfo containing the object hit information, distance of origin given a direction
+ * and steps.
+ */
 RayInfo rayMarchingShadow(vec3 originPoint, vec3 direction, float MAX_DIST){
     float count = 0.0;
     float t = 0.0;

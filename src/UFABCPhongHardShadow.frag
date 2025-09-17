@@ -399,6 +399,11 @@ RayInfo rayMarching(vec3 direction){
  *
  * Phong Illuminition model with Blinn optimazation.
  *
+ * @param [in] cameraDirection Camera direction.
+ * @param [in] position Point where the ray hits.
+ * @param [in] normal Normal of position.
+ * @param [in] objColor Color of the object hit by the ray.
+ * @return Correct color for phong illumination. 
  */
 vec3 phongIllumination(vec3 cameraDirection, vec3 position, vec3 normal, vec3 objColor){
     vec3 ambientColor = (objColor * 0.3) * (lightColor * 0.3);
@@ -412,6 +417,18 @@ vec3 phongIllumination(vec3 cameraDirection, vec3 position, vec3 normal, vec3 ob
     return ambientColor + diffuseColor + specularColor;
 }
 
+/**
+ * @brief Ray Marching algorithm for shadows.
+ *
+ * Starting at the hit point, advance the ray based on the direction of the light and value given by
+ * the SDF, seeking to reach the maximum distance or hit a solid object to create a shadow.
+ *
+ * @param [in] originPoint Solid hit point.
+ * @param [in] direction Ray direction towards the light origin.
+ * @param [in] MAX_DIST Biggest distance between the solid hit point and the light origin.
+ * @return Struct RayInfo containing the object hit information, distance of origin given a direction
+ * and steps.
+ */
 RayInfo rayMarchingShadow(vec3 originPoint, vec3 direction, float MAX_DIST){
     float count = 0.0;
     float t = 0.0;
