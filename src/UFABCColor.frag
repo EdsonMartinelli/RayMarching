@@ -1,9 +1,11 @@
 /**
- * @brief UFABC logotype and plane renderized by Ray Maching in 3D.
+ * @brief UFABC logotype and plane renderized by Ray Maching in 3D using colors.
  *
  * UFABC logo in the center of scene, SDF plane (space divider) and
  * camera looking at scene center (right-hand coordinate system). This configuration
  * is renderized by a standard Ray Marching method with maximum distance equals 32.0.
+ * This file use struct to store object colors and values and ray informations to color 
+ * the scene.
  *
  * @author Edson Martinelli
  * @date 2025
