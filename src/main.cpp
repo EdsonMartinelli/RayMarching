@@ -107,7 +107,7 @@ int main() {
     glViewport(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT);
 
     unsigned int vertexShader = createShader(GL_VERTEX_SHADER, "src/vertexshader.vert");
-    unsigned int fragmentShader = createShader(GL_FRAGMENT_SHADER, "src/UFABCHardShadowMap.frag");
+    unsigned int fragmentShader = createShader(GL_FRAGMENT_SHADER, "src/UFABCPhongHardShadow.frag");
     unsigned int shaderProgram = createShaderProgram(vertexShader, fragmentShader); 
 
     float vertices[] = {
@@ -138,7 +138,25 @@ int main() {
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);  
 
+    double totalTime = 0.0;
+    int totalFrames = 0;
+    double lastFrameTime = glfwGetTime();
+
+    double ONE_MINUTE = 60.0;
+
     while (!glfwWindowShouldClose(window)) {
+        double currentTime = glfwGetTime();
+        double deltaTime = currentTime - lastFrameTime;
+        totalTime += deltaTime;
+        totalFrames++;
+        lastFrameTime = currentTime;
+
+        if (totalTime >= ONE_MINUTE) {
+            double averageFPS = (double)totalFrames / totalTime;
+            printf("Média de FPS em %.1f segundos: %.2f\n", totalTime, averageFPS);
+            return 0;
+        }
+
         glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
 

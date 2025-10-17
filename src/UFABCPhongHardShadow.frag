@@ -403,9 +403,13 @@ RayInfo rayMarching(vec3 direction){
  * @param [in] position Point where the ray hits.
  * @param [in] normal Normal of position.
  * @param [in] objColor Color of the object hit by the ray.
+ * @param [in] illumination quantity of light hitting the surface.
  * @return Correct color for phong illumination. 
  */
-vec3 phongIllumination(vec3 cameraDirection, vec3 position, vec3 normal, vec3 objColor){
+vec3 phongIllumination(vec3 cameraDirection,
+                       vec3 position, vec3 normal,
+                       vec3 objColor,
+                       float illumination){
     vec3 ambientColor = (objColor * 0.3) * (lightColor * 0.3);
     vec3 lightDirection = normalize(lightOrigin - position);
     float diffuseReflection = dot(normal, lightDirection);
@@ -414,7 +418,7 @@ vec3 phongIllumination(vec3 cameraDirection, vec3 position, vec3 normal, vec3 ob
     float shininess = 5.;
     float facing = diffuseReflection > 0 ?  1 : 0;
     vec3 specularColor = facing * (objColor * 9.) * (lightColor * 9.) * pow(max(dot(normal, halfwayVector), 0.0), shininess);
-    return ambientColor + diffuseColor + specularColor;
+    return ambientColor + (diffuseColor + specularColor) * illumination;
 }
 
 /**
@@ -429,23 +433,19 @@ vec3 phongIllumination(vec3 cameraDirection, vec3 position, vec3 normal, vec3 ob
  * @return Struct RayInfo containing the object hit information, distance of origin given a direction
  * and steps.
  */
-RayInfo rayMarchingShadow(vec3 originPoint, vec3 direction, float MAX_DIST){
+float rayMarchingShadow(vec3 originPoint, vec3 direction, float MAX_DIST){
     float count = 0.0;
     float t = 0.0;
     ObjectHit objHit;
     while(t < MAX_DIST) {
         objHit = sdf(originPoint + direction * t);
         float r = objHit.value;
-        if(r < e) break;
-        if(count > MAX_STEP) break;
+        if(r < e) return 0.;
+        if(count > MAX_STEP) 0.;
         t += r;
         count = count + 1;
     }
-    RayInfo ri;
-    ri.objHit = objHit;
-    ri.dist = t;
-    ri.count = count;
-    return ri;
+    return 1.;
 }
 
 /**
@@ -469,13 +469,9 @@ void main()
         vec3 lightDirection = lightOrigin - position;
         float MAX_DIST = length(lightDirection);
         vec3 normalizedLightDirection = lightDirection / MAX_DIST;
-        RayInfo riShadow = rayMarchingShadow(position + (normal * e), normalizedLightDirection, MAX_DIST);
-
-        if(riShadow.dist <= MAX_DIST - e){
-            color = objColor * vec3(0.05);
-        } else {
-            color = phongIllumination(cameraDirection, position, normal, objColor);
-        }     
+        float illumination = rayMarchingShadow(position + (normal * e), normalizedLightDirection, MAX_DIST);
+        color = phongIllumination(cameraDirection, position, normal, objColor, illumination);
+             
     }
 
     fragColor = vec4(gammaCorrection(color),1.0);
