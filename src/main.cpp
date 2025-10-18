@@ -192,16 +192,11 @@ int main() {
 
         if(CALCULATE_SHADER_TIME){
             GLint available = GL_FALSE;
-            // Esperar (opcionalmente pode fazer outro trabalho aqui)
             while (available == GL_FALSE) {
                 glGetQueryObjectiv(queryID, GL_QUERY_RESULT_AVAILABLE, &available);
             }
-
-            // Obter o resultado em nanosegundos
             GLuint64 elapsedTime;
             glGetQueryObjectui64v(queryID, GL_QUERY_RESULT, &elapsedTime);
-
-            // Converter para milissegundos para facilitar a leitura
             double ms = (double)elapsedTime / 1000000.0;
             totalShaderTime += ms;
         }
