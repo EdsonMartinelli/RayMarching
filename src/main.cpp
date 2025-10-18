@@ -141,7 +141,7 @@ int main() {
     glEnableVertexAttribArray(0);  
 
     //Shader Time
-    GLuint queryID;
+    int queryID;
     glGenQueries(1, &queryID);
     double totalShaderTime = 0;
 
