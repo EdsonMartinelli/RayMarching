@@ -17,6 +17,8 @@
 #include <fstream>
 #include <commun/shader.hpp>
 
+#define CALCULATE_SHADER_TIME 0 /**< Defines if the program will calculate shader time (1) or not (0)*/
+
 int WINDOW_WIDTH = 800; /**< Global window width size. */
 int WINDOW_HEIGHT = 600; /**< Global window height size. */
 
@@ -65,7 +67,7 @@ void framebufferSizeCallback(GLFWwindow* window, int width, int height)
 {
     WINDOW_WIDTH = width;
     WINDOW_HEIGHT = height;
-    glViewport(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT);
+    glViewport(0, 0, WINDOW_WIDTH, (int)WINDOW_HEIGHT);
 }
 
 /**
@@ -138,6 +140,12 @@ int main() {
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);  
 
+    //Shader Time
+    GLuint queryID;
+    glGenQueries(1, &queryID);
+    double totalShaderTime = 0;
+
+    //FPS
     double totalTime = 0.0;
     int totalFrames = 0;
     double lastFrameTime = glfwGetTime();
@@ -151,14 +159,26 @@ int main() {
         totalFrames++;
         lastFrameTime = currentTime;
 
+        //FPS
         if (totalTime >= ONE_MINUTE) {
             double averageFPS = (double)totalFrames / totalTime;
             printf("Média de FPS em %.1f segundos: %.2f\n", totalTime, averageFPS);
+
+            if(CALCULATE_SHADER_TIME){
+                double averageShaderTime = (double)totalShaderTime / totalFrames;
+                printf("Média de tempo do shader em %.1f segundos: %.4f (ms)\n", totalTime, averageShaderTime);
+            }
+           
             return 0;
         }
 
         glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
+
+
+        glBeginQuery(GL_TIME_ELAPSED, queryID);
+
+        
 
         glUseProgram(shaderProgram);
         //int iResolutionLocation = glGetUniformLocation(shaderProgram, "iResolution");
@@ -167,6 +187,24 @@ int main() {
         //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
         glBindVertexArray(0);
+
+        glEndQuery(GL_TIME_ELAPSED);
+
+        if(CALCULATE_SHADER_TIME){
+            GLint available = GL_FALSE;
+            // Esperar (opcionalmente pode fazer outro trabalho aqui)
+            while (available == GL_FALSE) {
+                glGetQueryObjectiv(queryID, GL_QUERY_RESULT_AVAILABLE, &available);
+            }
+
+            // Obter o resultado em nanosegundos
+            GLuint64 elapsedTime;
+            glGetQueryObjectui64v(queryID, GL_QUERY_RESULT, &elapsedTime);
+
+            // Converter para milissegundos para facilitar a leitura
+            double ms = (double)elapsedTime / 1000000.0;
+            totalShaderTime += ms;
+        }
 
         glfwSwapBuffers(window);
         glfwPollEvents();
