@@ -95,7 +95,7 @@ void main()
   
     vec3 col = (d>0.0) ? vec3(0.4,0.4,0.4) : vec3(0.65,0.85,1.0);
     col = (d < 0.1) ?  vec3(0.,0.,0.) : col;
-	//col *= 0.8 + 0.2*cos(150.0*d);
+	col *= 1.5*cos(180.0*d);
     col = d<0.0 ? vec3(1.,1.,1.): col;
     
     float planeCutter = sdPlane(p);
