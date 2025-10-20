@@ -39,10 +39,20 @@ layout (location = 0) out vec4 fragColor;
 layout (location = 0) uniform vec2 iResolution;
 
 /**
+ * @ingroup RayVariables
+ * @brief Ray information struct.
+*/
+struct RayInfo{
+    float value; /**< Value at the point */  
+    float dist; /**< Distance from camera origin */  
+    float count; /**< Steps from camera origin */
+};
+
+/**
  * @ingroup CameraVariables
  * @brief Rays origin.
 */
-vec3 origin = vec3(0.0, 0.0, 2.0);
+vec3 origin = vec3(1.0, 0.0, 2.0);
 /**
  * @ingroup CameraVariables
  * @brief Rays target position.
@@ -214,7 +224,6 @@ float sdfUFABC(vec3 p){
     return opExtrusion(p,final, 0.5);
 }
 
-
 /**
  * @brief Plane SDF.
  *
@@ -250,15 +259,28 @@ float sdf(vec3 p){
  * @param [in] p Normalized 3D space position.
  * @return Normal vector at the point.
  */
-vec3 getNormal(in vec3 p) {	
+// vec3 getNormal(in vec3 p, float pointValue) {	
+// 	vec3 normal;
+//     float hOffset = 0.0001;
+// 	vec2 h = vec2(hOffset, 0.0);
+//     normal.x = (sdf(p + h.xyy) - sdf(p - h.xyy)) / (hOffset * 2);
+// 	normal.y = (sdf(p + h.yxy) - sdf(p - h.yxy)) / (hOffset * 2);
+// 	normal.z = (sdf(p + h.yyx) - sdf(p - h.yyx)) / (hOffset * 2);
+//     vec3 color = normal * 0.5 + 0.5;
+//     return (pow(color, vec3(1.8))) * 1.2;
+// }
+
+vec3 getNormal(in vec3 p, float pointValue) {	
 	vec3 normal;
     float hOffset = 0.0001;
 	vec2 h = vec2(hOffset, 0.0);
-    normal.x = (sdf(p + h.xyy) - sdf(p)) / hOffset;
-	normal.y = (sdf(p + h.yxy) - sdf(p)) / hOffset;
-	normal.z = (sdf(p + h.yyx) - sdf(p)) / hOffset;
-	return (normalize(normal) + vec3(1.0)/2.);
+    normal.x = (sdf(p + h.xyy) - pointValue) / hOffset;
+	normal.y = (sdf(p + h.yxy) - pointValue) / hOffset;
+	normal.z = (sdf(p + h.yyx) - pointValue) / hOffset;
+	vec3 color = normal * 0.5 + 0.5;
+    return (pow(color, vec3(1.8))) * 1.2;
 }
+
 
 /**
  * @brief Apply gamma correction to a color.
@@ -309,19 +331,25 @@ vec3 getDirection(vec2 uv){
  * to find solid hit or reach the maximum distance.
  *
  * @param [in] direction Ray direction.
- * @return Distance of origin given a direction.
+ * @return Struct RayInfo containing the object hit information, distance of origin given a direction
+ * and steps.
  */
-float rayMarching(vec3 direction){
+RayInfo rayMarching(vec3 direction){
     float count = 0.0;
     float t = 0.0;
+    float r = 0.0;
     while(t < D) {
-        float r = sdf(origin + direction * t);
+        r = sdf(origin + direction * t);
         if(r < e) break;
         if(count > MAX_STEP) break;
         t += r;
         count = count + 1;
     }
-    return t;
+    RayInfo ri;
+    ri.value = r;
+    ri.dist = t;
+    ri.count = count;
+    return ri;
 }
 /**
  * @brief Main function to execute the scene.
@@ -333,14 +361,15 @@ void main()
 {
     vec2 uv = normalizeSpace();  
     vec3 direction = getDirection(uv);  
-    float t = rayMarching(direction);
+    RayInfo ri = rayMarching(direction);
+
+    float p = 1 - (gl_FragCoord.y / iResolution.y);
+    vec3 color = vec3(0.4,0.4,1.0) + vec3(p) ;
     
-    vec3 color = vec3(0.0,0.0,0.0);
-    
-    if(t < D) {
-        vec3 position = origin + direction * t;
-        vec3 normal = getNormal(position);
-        //color = vec3((count/MAX_STEP), 0.0, 1.0 - (count/MAX_STEP));
+    if(ri.dist < D) {
+        vec3 position = origin + direction * ri.dist;
+        vec3 normal = getNormal(position, ri.value);
+        //color = vec3((ri.count/MAX_STEP), 0.0, 1.0 - (ri.count/MAX_STEP));
         color =  normal;       
     }
     fragColor = vec4(gammaCorrection(color),1.0);
