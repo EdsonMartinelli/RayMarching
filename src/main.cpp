@@ -183,6 +183,7 @@ int main() {
         glUseProgram(shaderProgram);
         //int iResolutionLocation = glGetUniformLocation(shaderProgram, "iResolution");
         glUniform2f(0, (float)WINDOW_WIDTH, (float)WINDOW_HEIGHT);
+        glUniform1f(1, currentTime);
         glBindVertexArray(VAO);
         //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);

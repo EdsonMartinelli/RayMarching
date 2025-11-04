@@ -38,6 +38,8 @@ layout (location = 0) out vec4 fragColor;
 */
 layout (location = 0) uniform vec2 iResolution;
 
+layout (location = 1) uniform float iTimer;
+
 /**
  * @ingroup RayVariables
  * @brief Ray information struct.
@@ -137,12 +139,24 @@ vec2 calculateLinearPoint(vec2 origin, float m, float x){
  * @param [in] p Normalized 2D pixel position.
  * @return The correct value of SDF at the position.
  */
+// float sdPlaneCutter(vec2 p){
+//     p.x = p.x + 0.82;
+//     p.y = p.y - 0.245;
+//     p.x += 0.09*sin(9.*p.y); //<----
+//     return p.x;
+// }
+
 float sdPlaneCutter(vec2 p){
-    p.x = p.x + 0.82;
-    p.y = p.y - 0.245;
-    p.x = p.x + 0.09*sin(9.*p.y);
-    return p.x;
+    vec2 offset = vec2(-0.82,  0.245);
+    p = p - offset;
+    
+    float f = p.x + 0.09*sin(9.*p.y);
+    
+    float dy =  0.81 * cos(9.*p.y);
+    float o = length(vec2(1, dy));
+    return f/o;
 }
+
 /**
  * @brief Oriented Box SDF.
  *
@@ -178,6 +192,14 @@ float sdOBox(vec2 p, vec2 sideOriginCenter, float m, float xEndCenter, float th)
 float sdCircle(vec2 p, float r){
     return length(p) - r;
 }
+
+// float sdPlaneCutter(vec2 p){
+//     vec2 offset1 = vec2(1.2, -0.6);
+//     vec2 offset2 = vec2(0.95, -0.02);
+//     float c1 = sdCircle(p + offset1, 0.3);
+//     float c2 = sdCircle(p + offset2, 0.22);
+//     return smoothMin(c1, c2, 0.42);
+// }
 
 /**
  * @brief UFABC logo SDF.
@@ -259,27 +281,29 @@ float sdf(vec3 p){
  * @param [in] p Normalized 3D space position.
  * @return Normal vector at the point.
  */
-// vec3 getNormal(in vec3 p, float pointValue) {	
-// 	vec3 normal;
-//     float hOffset = 0.0001;
-// 	vec2 h = vec2(hOffset, 0.0);
-//     normal.x = (sdf(p + h.xyy) - sdf(p - h.xyy)) / (hOffset * 2);
-// 	normal.y = (sdf(p + h.yxy) - sdf(p - h.yxy)) / (hOffset * 2);
-// 	normal.z = (sdf(p + h.yyx) - sdf(p - h.yyx)) / (hOffset * 2);
-//     vec3 color = normal * 0.5 + 0.5;
-//     return (pow(color, vec3(1.8))) * 1.2;
-// }
-
 vec3 getNormal(in vec3 p, float pointValue) {	
 	vec3 normal;
     float hOffset = 0.0001;
 	vec2 h = vec2(hOffset, 0.0);
-    normal.x = (sdf(p + h.xyy) - pointValue) / hOffset;
-	normal.y = (sdf(p + h.yxy) - pointValue) / hOffset;
-	normal.z = (sdf(p + h.yyx) - pointValue) / hOffset;
-	vec3 color = normal * 0.5 + 0.5;
-    return (pow(color, vec3(1.8))) * 1.2;
+    normal.x = (sdf(p + h.xyy) - sdf(p - h.xyy));
+	normal.y = (sdf(p + h.yxy) - sdf(p - h.yxy));
+	normal.z = (sdf(p + h.yyx) - sdf(p - h.yyx));
+    vec3 color = normalize(normal) * 0.5 + 0.5;
+    return normalize(pow(color, vec3(2)) * 1.2);
+    //return normalize(normal);
 }
+
+// vec3 getNormal(in vec3 p, float pointValue) {	
+// 	vec3 normal;
+//     float hOffset = 0.0001;
+// 	vec2 h = vec2(hOffset, 0.0);
+//     normal.x = (sdf(p + h.xyy) - pointValue);
+// 	normal.y = (sdf(p + h.yxy) - pointValue);
+// 	normal.z = (sdf(p + h.yyx) - pointValue);
+// 	vec3 color = normalize(normal) * 0.5 + 0.5;
+//     return (pow(color, vec3(1.8))) * 1.2;
+//     return normalize(normal);
+// }
 
 
 /**
@@ -359,6 +383,8 @@ RayInfo rayMarching(vec3 direction){
  */
 void main()
 {
+    origin = vec3(3.0 *sin(iTimer), 0.0, 3.0 *cos(iTimer));
+    //origin = vec3(3.0, 0.0, -0.0);
     vec2 uv = normalizeSpace();  
     vec3 direction = getDirection(uv);  
     RayInfo ri = rayMarching(direction);
@@ -372,5 +398,9 @@ void main()
         //color = vec3((ri.count/MAX_STEP), 0.0, 1.0 - (ri.count/MAX_STEP));
         color =  normal;       
     }
+
+    // if(direction.x < 0){
+    //     color = vec3(0.8);
+    // }
     fragColor = vec4(gammaCorrection(color),1.0);
 }
