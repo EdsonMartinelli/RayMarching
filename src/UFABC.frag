@@ -139,22 +139,13 @@ vec2 calculateLinearPoint(vec2 origin, float m, float x){
  * @param [in] p Normalized 2D pixel position.
  * @return The correct value of SDF at the position.
  */
-// float sdPlaneCutter(vec2 p){
-//     p.x = p.x + 0.82;
-//     p.y = p.y - 0.245;
-//     p.x += 0.09*sin(9.*p.y); //<----
-//     return p.x;
-// }
-
 float sdPlaneCutter(vec2 p){
-    vec2 offset = vec2(-0.82,  0.245);
+    vec2 offset = vec2(-0.82, 0.245);
     p = p - offset;
-    
     float f = p.x + 0.09*sin(9.*p.y);
-    
-    float dy =  0.81 * cos(9.*p.y);
-    float o = length(vec2(1, dy));
-    return f/o;
+    vec2 df = vec2(1, 0.81 * cos(9.*p.y));
+    float g = max(length(df),e);
+    return f / g;
 }
 
 /**
