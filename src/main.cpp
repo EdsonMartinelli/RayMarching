@@ -16,6 +16,7 @@
 #include <string>
 #include <fstream>
 #include <commun/shader.hpp>
+#include <cmath>
 
 #define CALCULATE_SHADER_TIME 0 /**< Defines if the program will calculate shader time (1) or not (0)*/
 
@@ -110,7 +111,7 @@ int main() {
     glViewport(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT);
 
     unsigned int vertexShader = createShader(GL_VERTEX_SHADER, "src/vertexshader.vert");
-    unsigned int fragmentShader = createShader(GL_FRAGMENT_SHADER, "src/UFABCPhongHardShadow.frag");
+    unsigned int fragmentShader = createShader(GL_FRAGMENT_SHADER, "src/UFABCStepCount.frag");
     unsigned int shaderProgram = createShaderProgram(vertexShader, fragmentShader); 
 
     float vertices[] = {
@@ -150,7 +151,8 @@ int main() {
     double totalTime = 0.0;
     int totalFrames = 0;
     double lastFrameTime = glfwGetTime();
-    int alreadyPrinted = 0;
+    double FPSamples[5];
+    int samplesCount = 0;
 
     double ONE_MINUTE = 60.0;
 
@@ -161,19 +163,7 @@ int main() {
         totalFrames++;
         lastFrameTime = currentTime;
 
-        //FPS
-        if (totalTime >= ONE_MINUTE) {
-            double averageFPS = (double)totalFrames / totalTime;
-            printf("Média de FPS em %.1f segundos: %.2f\n", totalTime, averageFPS);
-            
-
-            if(CALCULATE_SHADER_TIME){
-                double averageShaderTime = (double)totalShaderTime / totalFrames;
-                printf("Média de tempo do shader em %.1f segundos: %.4f (ms)\n", totalTime, averageShaderTime);
-            }
-
-            return 0;
-        }
+       
 
         glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
@@ -206,6 +196,43 @@ int main() {
 
         glfwSwapBuffers(window);
         glfwPollEvents();
+
+         //FPS
+        if (totalTime >= ONE_MINUTE) {
+            double averageFPS = (double)totalFrames / totalTime;
+            printf("Média de FPS em %.1f segundos: %.2f\n", totalTime, averageFPS);
+            FPSamples[samplesCount] = averageFPS;
+            samplesCount++;
+            totalTime = 0;
+            totalFrames = 0;
+
+            // if(CALCULATE_SHADER_TIME){
+            //     double averageShaderTime = (double)totalShaderTime / totalFrames;
+            //     printf("Média de tempo do shader em %.1f segundos: %.4f (ms)\n", totalTime, averageShaderTime);
+            // }
+
+            if(samplesCount == 5){
+                double averageFPSSamples = 0;
+                for(int i = 0; i < 5; i++){
+                    averageFPSSamples += FPSamples[i];
+                }
+                
+                averageFPSSamples = averageFPSSamples / 5;
+                printf("Média de FPS nas amostras: %.2f\n", averageFPSSamples);
+
+                double varianceFPSSamples = 0;
+                for(int i = 0; i < 5; i++){
+                    double difference = (FPSamples[i] -averageFPSSamples);
+                    varianceFPSSamples += difference * difference;
+                }
+
+                varianceFPSSamples =  varianceFPSSamples / 5;
+                printf("Variância de FPS nas amostras: %.2f\n", varianceFPSSamples);
+                printf("Desvio Padrão de FPS nas amostras: %.2f\n", sqrt(varianceFPSSamples));
+
+                return 0;
+            }
+        }
     }
 
     glfwDestroyWindow(window);
