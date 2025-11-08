@@ -94,6 +94,7 @@ int main() {
     }
     
     glfwMakeContextCurrent(window);
+    glfwSwapInterval(0);
     
 
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
@@ -109,7 +110,7 @@ int main() {
     glViewport(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT);
 
     unsigned int vertexShader = createShader(GL_VERTEX_SHADER, "src/vertexshader.vert");
-    unsigned int fragmentShader = createShader(GL_FRAGMENT_SHADER, "src/UFABC2D.frag");
+    unsigned int fragmentShader = createShader(GL_FRAGMENT_SHADER, "src/UFABCPhongHardShadow.frag");
     unsigned int shaderProgram = createShaderProgram(vertexShader, fragmentShader); 
 
     float vertices[] = {
@@ -141,7 +142,7 @@ int main() {
     glEnableVertexAttribArray(0);  
 
     //Shader Time
-    uint queryID;
+    unsigned int queryID;
     glGenQueries(1, &queryID);
     double totalShaderTime = 0;
 
@@ -149,6 +150,7 @@ int main() {
     double totalTime = 0.0;
     int totalFrames = 0;
     double lastFrameTime = glfwGetTime();
+    int alreadyPrinted = 0;
 
     double ONE_MINUTE = 60.0;
 
@@ -163,12 +165,13 @@ int main() {
         if (totalTime >= ONE_MINUTE) {
             double averageFPS = (double)totalFrames / totalTime;
             printf("Média de FPS em %.1f segundos: %.2f\n", totalTime, averageFPS);
+            
 
             if(CALCULATE_SHADER_TIME){
                 double averageShaderTime = (double)totalShaderTime / totalFrames;
                 printf("Média de tempo do shader em %.1f segundos: %.4f (ms)\n", totalTime, averageShaderTime);
             }
-           
+
             return 0;
         }
 
@@ -178,12 +181,11 @@ int main() {
 
         glBeginQuery(GL_TIME_ELAPSED, queryID);
 
-        
+
 
         glUseProgram(shaderProgram);
         //int iResolutionLocation = glGetUniformLocation(shaderProgram, "iResolution");
         glUniform2f(0, (float)WINDOW_WIDTH, (float)WINDOW_HEIGHT);
-        glUniform1f(1, currentTime);
         glBindVertexArray(VAO);
         //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
