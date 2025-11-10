@@ -111,7 +111,7 @@ int main() {
     glViewport(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT);
 
     unsigned int vertexShader = createShader(GL_VERTEX_SHADER, "src/vertexshader.vert");
-    unsigned int fragmentShader = createShader(GL_FRAGMENT_SHADER, "src/UFABCStepCount.frag");
+    unsigned int fragmentShader = createShader(GL_FRAGMENT_SHADER, "src/UFABC.frag");
     unsigned int shaderProgram = createShaderProgram(vertexShader, fragmentShader); 
 
     float vertices[] = {
@@ -176,6 +176,7 @@ int main() {
         glUseProgram(shaderProgram);
         //int iResolutionLocation = glGetUniformLocation(shaderProgram, "iResolution");
         glUniform2f(0, (float)WINDOW_WIDTH, (float)WINDOW_HEIGHT);
+        glUniform1f(1, currentTime);
         glBindVertexArray(VAO);
         //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
@@ -206,10 +207,10 @@ int main() {
             totalTime = 0;
             totalFrames = 0;
 
-            // if(CALCULATE_SHADER_TIME){
-            //     double averageShaderTime = (double)totalShaderTime / totalFrames;
-            //     printf("Média de tempo do shader em %.1f segundos: %.4f (ms)\n", totalTime, averageShaderTime);
-            // }
+            if(CALCULATE_SHADER_TIME){
+                double averageShaderTime = (double)totalShaderTime / totalFrames;
+                printf("Média de tempo do shader em %.1f segundos: %.4f (ms)\n", totalTime, averageShaderTime);
+            }
 
             if(samplesCount == 5){
                 double averageFPSSamples = 0;
