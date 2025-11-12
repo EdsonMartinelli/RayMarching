@@ -142,16 +142,21 @@ int main() {
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);  
 
+
+    int samples = 5;
+
     //Shader Time
     unsigned int queryID;
     glGenQueries(1, &queryID);
     double totalShaderTime = 0;
+    double ShaderTimeSamples[samples];
 
     //FPS
     double totalTime = 0.0;
     int totalFrames = 0;
     double lastFrameTime = glfwGetTime();
-    double FPSamples[5];
+    double FPSamples[samples];
+
     int samplesCount = 0;
 
     double ONE_MINUTE = 60.0;
@@ -163,15 +168,10 @@ int main() {
         totalFrames++;
         lastFrameTime = currentTime;
 
-       
-
         glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
 
-
         glBeginQuery(GL_TIME_ELAPSED, queryID);
-
-
 
         glUseProgram(shaderProgram);
         //int iResolutionLocation = glGetUniformLocation(shaderProgram, "iResolution");
@@ -203,34 +203,59 @@ int main() {
             double averageFPS = (double)totalFrames / totalTime;
             printf("Média de FPS em %.1f segundos: %.2f\n", totalTime, averageFPS);
             FPSamples[samplesCount] = averageFPS;
-            samplesCount++;
-            totalTime = 0;
-            totalFrames = 0;
+            
+            
 
             if(CALCULATE_SHADER_TIME){
                 double averageShaderTime = (double)totalShaderTime / totalFrames;
+                ShaderTimeSamples[samplesCount] = averageShaderTime;
                 printf("Média de tempo do shader em %.1f segundos: %.4f (ms)\n", totalTime, averageShaderTime);
             }
 
-            if(samplesCount == 5){
+            samplesCount++;
+            totalShaderTime = 0;
+            totalTime = 0;
+            totalFrames = 0;
+
+            if(samplesCount == samples){
                 double averageFPSSamples = 0;
-                for(int i = 0; i < 5; i++){
+                double averageShaderTimeSamples = 0;
+                for(int i = 0; i < samples; i++){
                     averageFPSSamples += FPSamples[i];
+                    averageShaderTimeSamples += ShaderTimeSamples[i];
                 }
                 
-                averageFPSSamples = averageFPSSamples / 5;
+                averageFPSSamples = averageFPSSamples / samples;
                 printf("Média de FPS nas amostras: %.2f\n", averageFPSSamples);
 
                 double varianceFPSSamples = 0;
-                for(int i = 0; i < 5; i++){
+                for(int i = 0; i < samples; i++){
                     double difference = (FPSamples[i] -averageFPSSamples);
                     varianceFPSSamples += difference * difference;
                 }
 
-                varianceFPSSamples =  varianceFPSSamples / 5;
+                varianceFPSSamples =  varianceFPSSamples / samples;
                 printf("Variância de FPS nas amostras: %.2f\n", varianceFPSSamples);
                 printf("Desvio Padrão de FPS nas amostras: %.2f\n", sqrt(varianceFPSSamples));
 
+                if(CALCULATE_SHADER_TIME){
+                    double averageShaderTimeSamples = 0;
+                    for(int i = 0; i < samples; i++){
+                        averageShaderTimeSamples += ShaderTimeSamples[i];
+                    }
+                    averageShaderTimeSamples = averageShaderTimeSamples / samples;
+                    printf("édia de tempo do shader nas amostras: %.4f\n", averageShaderTimeSamples);
+
+                    double varianceShaderTimeSamples = 0;
+                    for(int i = 0; i < samples; i++){
+                        double difference = (ShaderTimeSamples[i] - averageShaderTimeSamples);
+                        varianceShaderTimeSamples += difference * difference;
+                    }
+
+                    varianceShaderTimeSamples =  varianceShaderTimeSamples / samples;
+                    printf("Variância de FPS nas amostras: %.4f\n", varianceShaderTimeSamples);
+                    printf("Desvio Padrão de FPS nas amostras: %.4f\n", sqrt(varianceShaderTimeSamples));
+                }
                 return 0;
             }
         }

@@ -15,7 +15,7 @@ std::string readShaderFile(const char* path){
 		shaderStream.close();
         return shaderCode;
 	}else{
-		std::cout << "Erro on load shader!" << std::endl;
+		std::cout << "Error on load shader!" << path << std::endl;
 		getchar();
 		return 0;
 	}

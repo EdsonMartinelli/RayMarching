@@ -140,11 +140,17 @@ vec2 calculateLinearPoint(vec2 origin, float m, float x){
  * @return The correct value of SDF at the position.
  */
 float sdPlaneCutter(vec2 p){
+    //0.245
     vec2 offset = vec2(-0.82, 0.245);
     p = p - offset;
     float f = p.x + 0.09*sin(9.*p.y);
+    // if(f < -0.5 && f > -1.31){
+    //     vec2 df = vec2(1, 0.81 * cos(9.*p.y));
+    //     float g = length(df);
+    //     return f / (1.08*g);
+    // }
+
     vec2 df = vec2(1, 0.81 * cos(9.*p.y));
-    //float g = max(length(df),e);
     float g = length(df);
     return f / g;
 }
@@ -266,7 +272,7 @@ float sdf(vec3 p){
 /**
  * @brief Get implicit functions normal.
  *
- * Get normal of a given point in the world using a numerical differentiation (Forward Difference).
+ * Get normal of a given point in the world using a numerical differentiation (Central Finite Difference).
  * The small value of the method is applied in the three axes (x, y, z) and the final result is normalized to all
  * values stays between 0.0 and 1.0 because it is only used to color.
  *
@@ -284,19 +290,6 @@ vec3 getNormal(in vec3 p, float pointValue) {
     return normalize(pow(color, vec3(2)) * 1.2);
     //return normalize(normal);
 }
-
-// vec3 getNormal(in vec3 p, float pointValue) {	
-// 	vec3 normal;
-//     float hOffset = 0.0001;
-// 	vec2 h = vec2(hOffset, 0.0);
-//     normal.x = (sdf(p + h.xyy) - pointValue);
-// 	normal.y = (sdf(p + h.yxy) - pointValue);
-// 	normal.z = (sdf(p + h.yyx) - pointValue);
-// 	vec3 color = normalize(normal) * 0.5 + 0.5;
-//     return (pow(color, vec3(1.8))) * 1.2;
-//     return normalize(normal);
-// }
-
 
 /**
  * @brief Apply gamma correction to a color.
@@ -376,7 +369,6 @@ RayInfo rayMarching(vec3 direction){
 void main()
 {
     origin = vec3(3.0 *sin(iTimer), 0.0, 3.0 *cos(iTimer));
-    //origin = vec3(3.0, 0.0, -0.0);
     vec2 uv = normalizeSpace();  
     vec3 direction = getDirection(uv);  
     RayInfo ri = rayMarching(direction);

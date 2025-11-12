@@ -314,14 +314,23 @@ ObjectHit sdf(vec3 p){
  * @param [in] pointValue SDF value at point p.
  * @return Normal vector at the point.
  */
+// vec3 getNormal(in vec3 p, float pointValue) {	
+// 	vec3 normal;
+//     float hOffset = 0.0001;
+// 	vec2 h = vec2(hOffset, 0.0);
+//     normal.x = (sdf(p + h.xyy).value - pointValue) / hOffset;
+// 	normal.y = (sdf(p + h.yxy).value - pointValue) / hOffset;
+// 	normal.z = (sdf(p + h.yyx).value - pointValue) / hOffset;
+// 	return normalize(normal);
+// }
 vec3 getNormal(in vec3 p, float pointValue) {	
 	vec3 normal;
     float hOffset = 0.0001;
 	vec2 h = vec2(hOffset, 0.0);
-    normal.x = (sdf(p + h.xyy).value - pointValue) / hOffset;
-	normal.y = (sdf(p + h.yxy).value - pointValue) / hOffset;
-	normal.z = (sdf(p + h.yyx).value - pointValue) / hOffset;
-	return normalize(normal);
+    normal.x = (sdf(p + h.xyy).value - sdf(p - h.xyy).value);
+	normal.y = (sdf(p + h.yxy).value - sdf(p - h.yxy).value);
+	normal.z = (sdf(p + h.yyx).value - sdf(p - h.yyx).value);
+    return normalize(normal);
 }
 
 /**
