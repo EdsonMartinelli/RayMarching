@@ -48,6 +48,8 @@ layout (location = 0) out vec4 fragColor;
 */
 layout (location = 0) uniform vec2 iResolution;
 
+layout (location = 1) uniform float iTimer;
+
 /**
  * @ingroup ObjVariables
  * @brief Object hit struct.
@@ -333,6 +335,7 @@ vec3 getNormal(in vec3 p, float pointValue) {
     return normalize(normal);
 }
 
+
 /**
  * @brief Apply gamma correction to a color.
  *
@@ -466,6 +469,7 @@ float rayMarchingShadow(vec3 originPoint, vec3 direction, float MAX_DIST){
  */
 void main()
 {
+    origin = vec3(3.0 *sin(iTimer), 0.0, 3.0 *cos(iTimer));
     vec2 uv = normalizeSpace();  
     vec3 cameraDirection = getDirection(uv);  
     RayInfo ri = rayMarching(cameraDirection);
