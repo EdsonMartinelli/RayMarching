@@ -23,6 +23,9 @@
 int WINDOW_WIDTH = 800; /**< Global window width size. */
 int WINDOW_HEIGHT = 600; /**< Global window height size. */
 
+int SAMPLES = 5;/**< Number of samples for avarage FPS and Shader Time calculte.*/
+double ONE_MINUTE = 60.0; /** Time of each sample. */
+
 /**
  * @brief Callback function for error handler.
  * 
@@ -72,6 +75,61 @@ void framebufferSizeCallback(GLFWwindow* window, int width, int height)
 }
 
 /**
+ * @brief Calculate metrics related to FPS.
+ * 
+ * Calculate average, variance and standard deviation of FPS samples.
+ * 
+ * @param [in] FPSamples FPS samples.
+ */
+void calculteFPSMetrics(double FPSamples[]){
+    double averageFPSSamples = 0;
+    double averageShaderTimeSamples = 0;
+    for(int i = 0; i < SAMPLES; i++){
+        averageFPSSamples += FPSamples[i];
+    }
+    
+    averageFPSSamples = averageFPSSamples / SAMPLES;
+    printf("Média de FPS nas amostras: %.2f\n", averageFPSSamples);
+
+    double varianceFPSSamples = 0;
+    for(int i = 0; i < SAMPLES; i++){
+        double difference = (FPSamples[i] -averageFPSSamples);
+        varianceFPSSamples += difference * difference;
+    }
+
+    varianceFPSSamples =  varianceFPSSamples / SAMPLES;
+    printf("Variância de FPS nas amostras: %.2f\n", varianceFPSSamples);
+    printf("Desvio Padrão de FPS nas amostras: %.2f\n", sqrt(varianceFPSSamples));
+}
+
+
+/**
+ * @brief Calculate metrics related to Shader time.
+ * 
+ * Calculate average, variance and standard deviation of Shader samples.
+ * 
+ * @param [in] ShaderTimeSamples Shader time samples.
+ */
+void calculteShaderMetrics(double ShaderTimeSamples[]){
+    double averageShaderTimeSamples = 0;
+    for(int i = 0; i < SAMPLES; i++){
+        averageShaderTimeSamples += ShaderTimeSamples[i];
+    }
+    averageShaderTimeSamples = averageShaderTimeSamples / SAMPLES;
+    printf("Média de tempo do shader nas amostras: %.4f\n", averageShaderTimeSamples);
+
+    double varianceShaderTimeSamples = 0;
+    for(int i = 0; i < SAMPLES; i++){
+        double difference = (ShaderTimeSamples[i] - averageShaderTimeSamples);
+        varianceShaderTimeSamples += difference * difference;
+    }
+
+    varianceShaderTimeSamples =  varianceShaderTimeSamples / SAMPLES;
+    printf("Variância de FPS nas amostras: %.4f\n", varianceShaderTimeSamples);
+    printf("Desvio Padrão de FPS nas amostras: %.4f\n", sqrt(varianceShaderTimeSamples));
+}
+
+/**
  * @brief Main function of program to generate image.
  * 
  * Main function: Initialized GLFW and GLAD, setup callback functions, read the shaders, create the vertices
@@ -83,7 +141,7 @@ int main() {
         std::cerr << "Failed to initialize GLFW\n";
         return -1;
     }
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
@@ -142,24 +200,19 @@ int main() {
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);  
 
-
-    int samples = 5;
-
     //Shader Time
     unsigned int queryID;
     glGenQueries(1, &queryID);
     double totalShaderTime = 0;
-    double ShaderTimeSamples[samples];
+    double ShaderTimeSamples[SAMPLES];
 
     //FPS
     double totalTime = 0.0;
     int totalFrames = 0;
     double lastFrameTime = glfwGetTime();
-    double FPSamples[samples];
+    double FPSamples[SAMPLES];
 
     int samplesCount = 0;
-
-    double ONE_MINUTE = 60.0;
 
     while (!glfwWindowShouldClose(window)) {
         double currentTime = glfwGetTime();
@@ -203,9 +256,6 @@ int main() {
             double averageFPS = (double)totalFrames / totalTime;
             printf("Média de FPS em %.1f segundos: %.2f\n", totalTime, averageFPS);
             FPSamples[samplesCount] = averageFPS;
-            
-            
-
             if(CALCULATE_SHADER_TIME){
                 double averageShaderTime = (double)totalShaderTime / totalFrames;
                 ShaderTimeSamples[samplesCount] = averageShaderTime;
@@ -217,45 +267,9 @@ int main() {
             totalTime = 0;
             totalFrames = 0;
 
-            if(samplesCount == samples){
-                double averageFPSSamples = 0;
-                double averageShaderTimeSamples = 0;
-                for(int i = 0; i < samples; i++){
-                    averageFPSSamples += FPSamples[i];
-                    averageShaderTimeSamples += ShaderTimeSamples[i];
-                }
-                
-                averageFPSSamples = averageFPSSamples / samples;
-                printf("Média de FPS nas amostras: %.2f\n", averageFPSSamples);
-
-                double varianceFPSSamples = 0;
-                for(int i = 0; i < samples; i++){
-                    double difference = (FPSamples[i] -averageFPSSamples);
-                    varianceFPSSamples += difference * difference;
-                }
-
-                varianceFPSSamples =  varianceFPSSamples / samples;
-                printf("Variância de FPS nas amostras: %.2f\n", varianceFPSSamples);
-                printf("Desvio Padrão de FPS nas amostras: %.2f\n", sqrt(varianceFPSSamples));
-
-                if(CALCULATE_SHADER_TIME){
-                    double averageShaderTimeSamples = 0;
-                    for(int i = 0; i < samples; i++){
-                        averageShaderTimeSamples += ShaderTimeSamples[i];
-                    }
-                    averageShaderTimeSamples = averageShaderTimeSamples / samples;
-                    printf("édia de tempo do shader nas amostras: %.4f\n", averageShaderTimeSamples);
-
-                    double varianceShaderTimeSamples = 0;
-                    for(int i = 0; i < samples; i++){
-                        double difference = (ShaderTimeSamples[i] - averageShaderTimeSamples);
-                        varianceShaderTimeSamples += difference * difference;
-                    }
-
-                    varianceShaderTimeSamples =  varianceShaderTimeSamples / samples;
-                    printf("Variância de FPS nas amostras: %.4f\n", varianceShaderTimeSamples);
-                    printf("Desvio Padrão de FPS nas amostras: %.4f\n", sqrt(varianceShaderTimeSamples));
-                }
+            if(samplesCount == SAMPLES){
+                calculteFPSMetrics(FPSamples);
+                if(CALCULATE_SHADER_TIME) calculteShaderMetrics(ShaderTimeSamples);
                 return 0;
             }
         }

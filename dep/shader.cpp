@@ -50,10 +50,6 @@ unsigned int createShader(int shaderType, const char * path){
     return shaderId;  
 }
 
-
-
-
-
 unsigned int createShaderProgram(unsigned int vertexShaderId, unsigned int fragmentShaderId){
     unsigned int shaderProgramId = glCreateProgram();
     glAttachShader(shaderProgramId, vertexShaderId);
