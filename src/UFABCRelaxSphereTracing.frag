@@ -227,18 +227,18 @@ float sdCircle(vec2 p, float r){
 ObjectHit sdfUFABC(vec3 p){
     ObjectHit objHit;
 
-    float t = length(p) - 1.5;
+    // float t = length(p) - 1.5;
     // if(t >= 0.1){
     //     objHit.color = vec3(0.,0.,1.0);
     //     objHit.value = t;
     //     return objHit;
     // } 
 
-    if(t >= 1.0){
-        objHit.color = vec3(0.,0.,1.0);
-        objHit.value = 1.0;
-        return objHit;
-    } 
+    // if(t >= 1.0){
+    //     objHit.color = vec3(0.,0.,1.0);
+    //     objHit.value = 1.0;
+    //     return objHit;
+    // } 
 
     float insideRadius = 0.42;
     float outsideRadius = 0.5;
@@ -396,6 +396,37 @@ vec3 getDirection(vec2 uv){
     return normalize(viewportPoint + viewDir);  
 }
 
+RayInfo relaxationRayMarching(vec3 direction){
+    float count = 0.0;
+    float t = 0.0;
+    float omega = 1.6;
+    float previousR = 0.0;
+    float stepSize = 0.0;
+    ObjectHit objHit;
+    while(t < D) {
+        objHit = sdf(origin + direction * t);
+        float r = objHit.value;
+        if(abs(r) < e) break;
+        if(count > MAX_STEP) break;
+
+        if(omega > 1 && abs(previousR) + abs(r) <= stepSize){
+            stepSize = -stepSize;
+            omega = 1.0;
+        } else {           
+            stepSize = r * omega;
+
+        }   
+        previousR = r;
+        t += stepSize;
+        count = count + 1; 
+    }
+    RayInfo ri;
+    ri.objHit = objHit;
+    ri.dist = t;
+    ri.count = count;
+    return ri;
+}
+
 /**
  * @brief Ray Marching Algorithm.
  *
@@ -490,7 +521,7 @@ void main()
     //origin = vec3(4.0 *sin(iTimer), 0.0, 4.0 *cos(iTimer));
     vec2 uv = normalizeSpace();  
     vec3 cameraDirection = getDirection(uv);  
-    RayInfo ri = rayMarching(cameraDirection);
+    RayInfo ri = relaxationRayMarching(cameraDirection);
     
     vec3 color = vec3(0.0,0.0,0.0);
     
@@ -505,6 +536,11 @@ void main()
         color = phongIllumination(cameraDirection, position, normal, objColor, illumination);
              
     }
+
+    //  if(ri.dist < D) {
+    //     float count = ri.count;
+    //     color = vec3(count / MAX_STEP, 0. , 1. - (count / MAX_STEP));
+    // }
 
     fragColor = vec4(gammaCorrection(color),1.0);
 }
