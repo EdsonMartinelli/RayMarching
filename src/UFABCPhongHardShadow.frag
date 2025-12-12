@@ -89,7 +89,7 @@ vec3 vup = normalize(vec3(0.0, 1.0, 0.0));
  * @ingroup LightVariables
  * @brief Light point position. 
 */
-vec3 lightOrigin = vec3(0.0, 2.0, 3.0);
+vec3 lightOrigin = vec3(0.0, 1.0, 2.0);
 
 /**
  * @ingroup LightVariables
@@ -423,14 +423,14 @@ vec3 phongIllumination(vec3 cameraDirection,
                        vec3 position, vec3 normal,
                        vec3 objColor,
                        float illumination){
-    vec3 ambientColor = (objColor * 0.3) * (lightColor * 0.3);
+    vec3 ambientColor = (objColor * 0.1) * (lightColor * 0.1);
     vec3 lightDirection = normalize(lightOrigin - position);
     float diffuseReflection = dot(normal, lightDirection);
-    vec3 diffuseColor = (objColor * 0.7) * (lightColor * 0.7) * max(diffuseReflection, 0);
+    vec3 diffuseColor = (objColor * 0.5) * (lightColor * 0.5) * max(diffuseReflection, 0);
     vec3 halfwayVector = normalize(cameraDirection + lightDirection); 
-    float shininess = 5.;
+    float shininess = 1.;
     float facing = diffuseReflection > 0 ?  1 : 0;
-    vec3 specularColor = facing * (objColor * 9.) * (lightColor * 9.) * pow(max(dot(normal, halfwayVector), 0.0), shininess);
+    vec3 specularColor = facing * (objColor * 0.9) * (lightColor * 0.9) * pow(max(dot(normal, halfwayVector), 0.0), shininess);
     return ambientColor + (diffuseColor + specularColor) * illumination;
 }
 
@@ -469,7 +469,7 @@ float rayMarchingShadow(vec3 originPoint, vec3 direction, float MAX_DIST){
  */
 void main()
 {
-    origin = vec3(3.0 *sin(iTimer), 0.0, 3.0 *cos(iTimer));
+    //origin = vec3(3.0 *sin(iTimer), 0.0, 3.0 *cos(iTimer));
     vec2 uv = normalizeSpace();  
     vec3 cameraDirection = getDirection(uv);  
     RayInfo ri = rayMarching(cameraDirection);

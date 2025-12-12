@@ -368,7 +368,7 @@ RayInfo rayMarching(vec3 direction){
  */
 void main()
 {
-    origin = vec3(3.0 *sin(iTimer), 0.0, 3.0 *cos(iTimer));
+    //origin = vec3(3.0 *sin(iTimer), 0.0, 3.0 *cos(iTimer));
     vec2 uv = normalizeSpace();  
     vec3 direction = getDirection(uv);  
     RayInfo ri = rayMarching(direction);

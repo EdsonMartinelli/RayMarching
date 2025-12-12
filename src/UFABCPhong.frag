@@ -87,7 +87,7 @@ vec3 vup = normalize(vec3(0.0, 1.0, 0.0));
  * @ingroup LightVariables
  * @brief Light point position. 
 */
-vec3 lightOrigin = vec3(0.0, 0.0, 3.0);
+vec3 lightOrigin = vec3(0.0, 1.0, 2.0);
 
 /**
  * @ingroup LightVariables
@@ -319,10 +319,10 @@ vec3 getNormal(in vec3 p, float pointValue) {
 	vec3 normal;
     float hOffset = 0.0001;
 	vec2 h = vec2(hOffset, 0.0);
-    normal.x = (sdf(p + h.xyy).value - pointValue) / hOffset;
-	normal.y = (sdf(p + h.yxy).value - pointValue) / hOffset;
-	normal.z = (sdf(p + h.yyx).value - pointValue) / hOffset;
-	return normalize(normal);
+    normal.x = (sdf(p + h.xyy).value - sdf(p - h.xyy).value);
+	normal.y = (sdf(p + h.yxy).value - sdf(p - h.yxy).value);
+	normal.z = (sdf(p + h.yyx).value - sdf(p - h.yyx).value);
+    return normalize(normal);
 }
 
 /**
@@ -409,14 +409,14 @@ vec3 phongIllumination(vec3 cameraDirection, RayInfo ri){
     vec3 position = origin + cameraDirection * ri.dist;
     vec3 normal = getNormal(position, (ri.objHit).value);
     vec3 objColor = (ri.objHit).color;
-    vec3 ambientColor = (objColor * 0.3) * (lightColor * 0.3);
+    vec3 ambientColor = (objColor * 0.1) * (lightColor * 0.1);
     vec3 lightDirection = normalize(lightOrigin - position);
     float diffuseReflection = dot(normal, lightDirection);
-    vec3 diffuseColor = (objColor * 0.7) * (lightColor * 0.7) * max(diffuseReflection, 0);
+    vec3 diffuseColor = (objColor * 0.5) * (lightColor * 0.5) * max(diffuseReflection, 0);
     vec3 halfwayVector = normalize(cameraDirection + lightDirection); 
-    float shininess = 5.;
+    float shininess = 1.;
     float facing = diffuseReflection > 0 ?  1 : 0;
-    vec3 specularColor = facing * (objColor * 9.) * (lightColor * 9.) * pow(max(dot(normal, halfwayVector), 0.0), shininess);
+    vec3 specularColor = facing * (objColor * 0.9) * (lightColor * 0.9) * pow(max(dot(normal, halfwayVector), 0.0), shininess);
     return ambientColor + diffuseColor + specularColor;
 }
 

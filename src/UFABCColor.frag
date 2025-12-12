@@ -393,10 +393,11 @@ void main()
     
     if(ri.dist < D) {
         vec3 position = origin + direction * ri.dist;
-        vec3 normal = getNormal(position, (ri.objHit).value);
+       // vec3 normal = getNormal(position, (ri.objHit).value);
         vec3 objColor = (ri.objHit).color;
-        vec3 x = normal * (dot(normal, objColor));
-        color =  (objColor + clamp(x, vec3(-1.,-1.,-1.), vec3(1.,1.,1.))) / 2.;       
+        color = objColor;
+       // vec3 x = normal * (dot(normal, objColor));
+       // color =  (objColor + clamp(x, vec3(-1.,-1.,-1.), vec3(1.,1.,1.))) / 2.;       
     }
     fragColor = vec4(gammaCorrection(color),1.0);
 }
