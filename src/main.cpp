@@ -168,8 +168,8 @@ int main() {
 
     glViewport(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT);
 
-    unsigned int vertexShader = createShader(GL_VERTEX_SHADER, "src/vertexshader.vert");
-    unsigned int fragmentShader = createShader(GL_FRAGMENT_SHADER, "src/UFABCFull3D.frag");
+    unsigned int vertexShader = createShader(GL_VERTEX_SHADER, "src/shaders/vertexshader.vert");
+    unsigned int fragmentShader = createShader(GL_FRAGMENT_SHADER, "src/shaders/UFABCFull3D.frag");
     unsigned int shaderProgram = createShaderProgram(vertexShader, fragmentShader); 
 
     float vertices[] = {
