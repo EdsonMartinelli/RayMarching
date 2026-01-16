@@ -50,6 +50,17 @@ unsigned int createShader(int shaderType, const char * path){
     return shaderId;  
 }
 
+unsigned int createComputeShaderProgram(unsigned int computeShaderId){
+    unsigned int computeShaderProgramId = glCreateProgram();
+    glAttachShader(computeShaderProgramId, computeShaderId);
+    glLinkProgram(computeShaderProgramId);
+
+	glDetachShader(computeShaderProgramId, computeShaderId);
+
+    glDeleteShader(computeShaderId);
+	return computeShaderProgramId; 
+}
+
 unsigned int createShaderProgram(unsigned int vertexShaderId, unsigned int fragmentShaderId){
     unsigned int shaderProgramId = glCreateProgram();
     glAttachShader(shaderProgramId, vertexShaderId);

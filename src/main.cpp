@@ -17,6 +17,8 @@
 #include <fstream>
 #include <commun/shader.hpp>
 #include <cmath>
+#include <vector>
+#include <numeric> // Para std::iota
 
 #define CALCULATE_SHADER_TIME 0 /**< Defines if the program will calculate shader time (1) or not (0)*/
 
@@ -199,6 +201,57 @@ int main() {
 
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);  
+
+
+
+
+
+
+
+
+
+    const int N = 32; 
+    size_t sizeInBytes = N * sizeof(float); 
+
+    std::vector<float> initial_data(N);
+    std::iota(initial_data.begin(), initial_data.end(), 0.0f);
+    // for (const auto& element : initial_data) {
+    //     std::cout << element << " ";
+    // }
+
+    GLuint ssbo;
+    glGenBuffers(1, &ssbo);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo);
+    glBufferData(GL_SHADER_STORAGE_BUFFER, sizeInBytes, initial_data.data(), GL_DYNAMIC_DRAW);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, ssbo);
+
+    unsigned int computeShader = createShader(GL_COMPUTE_SHADER, "src/shaders/compute.comp.glsl");
+    unsigned int computeShaderProgram = createComputeShaderProgram(computeShader); 
+
+    glUseProgram(computeShaderProgram);
+    glDispatchCompute((unsigned int) (N / 4),1,1);
+    glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+
+    std::vector<float> final_data(N);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo);
+    glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, sizeInBytes, final_data.data());
+
+    for (const auto& element : final_data) {
+        std::cout << element << " ";
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     //Shader Time
     unsigned int queryID;
