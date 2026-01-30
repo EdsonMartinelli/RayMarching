@@ -7,6 +7,6 @@ if [ ! -d "$DIRECTORY" ]; then
   mkdir $DIRECTORY
 fi
 
-g++ dep/glad.c dep/shader.cpp src/main.cpp -o build/app.o $FLAGS
+g++ -std=c++20 dep/glad.c dep/shader.cpp src/main.cpp -o build/app.o $FLAGS
 
 ./build/app.o

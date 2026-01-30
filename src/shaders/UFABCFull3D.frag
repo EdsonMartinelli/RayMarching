@@ -217,6 +217,8 @@ float sdOBox(vec3 p3, vec2 sideOriginCenter, float m, float xEndCenter, float th
  * @return The correct value of SDF at the position.
  */
 float sdCircle(vec3 p3, float r, float depth){
+    //(vec3 p3, vec2 offset, float r, float depth)
+    //p3 =  p - vec3(offset,0);
     vec2 p = p3.xy;
     float v = length(p) - r;
     return opExtrusion(p3, v, depth);
@@ -228,7 +230,7 @@ ObjectHit sdfGreenArcs(vec3 p){
     float halfEquilateralTriangleSide = (outsideRadius + insideRadius) * 0.5;
     float equilateralTriangleHeight = 0.796743;
     vec3 centerA = vec3(-halfEquilateralTriangleSide, -outsideRadius, 0);
-    vec3 centerB = vec3(0, equilateralTriangleHeight - outsideRadius, 0);
+    vec3 centerB = vec3(0, equilateralTriangleHeight -outsideRadius, 0);
     vec3 centerC = vec3(halfEquilateralTriangleSide, -outsideRadius, 0);
 
     float ringA = max(sdCircle(p - centerA, outsideRadius, 0.5), - sdCircle(p - centerA, insideRadius, 0.51));
@@ -236,7 +238,7 @@ ObjectHit sdfGreenArcs(vec3 p){
     float ringC = max(sdCircle(p - centerC, outsideRadius, 0.5), - sdCircle(p - centerC, insideRadius, 0.51));
 
     float rings = min(ringA, min(ringC, ringB));
-    float ringCCutter = sdOBox(p, centerC.xy, 1.690,1.0, 0.16, 0.51);
+    float ringCCutter = sdOBox(p, centerC.xy, 1.690, 1.0, 0.16, 0.51);
 
     float boxSlope = -0.5774; // 30 degree in radian
     float boxXCenterSideEnd = -1.15;
@@ -261,9 +263,9 @@ ObjectHit sdfYellowLines(vec3 p){
 
     float boxSlope = -0.5774; // 30 degree in radian
     float boxXCenterSideEnd = -1.15;
-    float box = sdOBox(p, centerC.xy, boxSlope,boxXCenterSideEnd, 0.16, 0.50);
+    float box = sdOBox(p, centerC.xy, boxSlope, boxXCenterSideEnd, 0.16, 0.50);
 
-    float boxCutter = sdOBox(p, centerC.xy, boxSlope,boxXCenterSideEnd, 0.02, 0.51);
+    float boxCutter = sdOBox(p, centerC.xy, boxSlope, boxXCenterSideEnd, 0.02, 0.51);
     float circleCutter = sdCircle(p - centerC, insideRadius, 0.51);
     float planeCutter = sdPlaneCutter(p);
 

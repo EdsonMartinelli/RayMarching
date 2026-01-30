@@ -7,7 +7,7 @@ if [ ! -d "$DIRECTORY" ]; then
   mkdir $DIRECTORY
 fi
 
-x86_64-w64-mingw32-g++ dep/glad.c dep/shader.cpp src/main.cpp dep/glfw-win/libglfw3.a -o build-win/app.exe $FLAGS  
+x86_64-w64-mingw32-g++ -std=c++20 dep/glad.c dep/shader.cpp src/main.cpp dep/glfw-win/libglfw3.a -o build-win/app.exe $FLAGS  
 
 WIN_PATH=$(wslpath -w "$(pwd)/build-win/app.exe")
 
