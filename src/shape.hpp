@@ -11,7 +11,7 @@ struct BinaryOperation{
 enum PrimitiveType {
     PRIMITIVE_CYLINDER,
     PRIMITIVE_BOX,
-    PRIMITIVE_PLANE_CUTTER ,
+    PRIMITIVE_PLANE_CUTTER,
     PRIMITIVE_FLOOR
 };
 
