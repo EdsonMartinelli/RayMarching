@@ -162,9 +162,6 @@ float evalPrimitive(vec3 p, Primitive pr){
 
 
 void main() {
-    // uint id = gl_GlobalInvocationID.x;
-    // dataData.data[id] = dataData.data[id] * 2.0;
-
     vec3 p = vec3(10, 10, 10);
     float R = 0.5;
 
