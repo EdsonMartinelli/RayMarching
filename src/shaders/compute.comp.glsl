@@ -79,7 +79,7 @@ layout(std430, binding = 3) buffer NodesBuffer {
 
 layout(std430, binding = 4) buffer ParentsBuffer {
     int data[];
-} parentsData;
+} parents;
 
 float e = 0.0001;
 
@@ -224,6 +224,47 @@ void main() {
         newItem.index = i;
         stack[stackIndex] = newItem;
         stackIndex++;
+    }
+
+
+
+
+
+    int numGlobalActives = 0;
+    for (int i = 0; i < NODES_MAX; i++) {
+
+        bool isGlobalActive = false;
+         if (states[i].state == NODESTATE_INACTIVE) {
+            states[i].inactiveAncestors = true;
+         }else {
+            int parentIndex = parents.data[i]; 
+            bool hasInactiveAncestors = parentIndex >= 0 ? states[parentIndex].inactiveAncestors : false;
+            states[i].inactiveAncestors = hasInactiveAncestors;
+            isGlobalActive = states[i].state == NODESTATE_ACTIVE &&  !hasInactiveAncestors;
+
+            if(parentIndex >= 0){
+                if(states[parentIndex].state == NODESTATE_SKIPPED){
+                    parents.data[i] = parents.data[parentIndex];
+                }
+            }
+
+            if(isGlobalActive){
+                numGlobalActives++;
+            }
+            
+         }
+         
+         stateOutputData.data[i] = isGlobalActive ?  1: 0;
+    }
+
+
+
+
+
+    for (int i = 0; i < NODES_MAX; i++) {
+        if ( states[i].state == NODESTATE_ACTIVE &&  !hasInactiveAncestors;) {
+            
+        }
     }
     
 }
