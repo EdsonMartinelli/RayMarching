@@ -214,9 +214,7 @@ int main() {
     const int N = 25; 
     size_t sizeInBytes = N * sizeof(float); 
 
-    std::vector<float> state(N, 0);
-    //std::iota(initial_data.begin(), state.end(), 0.0f);
-  
+    std::vector<float> state(N, 99); 
 
     
     std::array<Primitive,13> primitives;
@@ -233,26 +231,26 @@ int main() {
 
     GLuint ssbo[5];
     glGenBuffers(5, ssbo);
+  
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo[0]);
-    glBufferData(GL_SHADER_STORAGE_BUFFER, sizeInBytes, state.data(), GL_DYNAMIC_DRAW);
+    glBufferData(GL_SHADER_STORAGE_BUFFER, 13 * sizeof(primitives.data()[0]), primitives.data(), GL_DYNAMIC_DRAW);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, ssbo[0]);
 
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo[1]);
-    glBufferData(GL_SHADER_STORAGE_BUFFER, 13 * sizeof(primitives.data()[0]), primitives.data(), GL_DYNAMIC_DRAW);
+    glBufferData(GL_SHADER_STORAGE_BUFFER, 12 * sizeof(binaryOperations.data()[0]), binaryOperations.data(), GL_DYNAMIC_DRAW);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, ssbo[1]);
 
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo[2]);
-    glBufferData(GL_SHADER_STORAGE_BUFFER, 12 * sizeof(binaryOperations.data()[0]), binaryOperations.data(), GL_DYNAMIC_DRAW);
+    glBufferData(GL_SHADER_STORAGE_BUFFER, 25 * sizeof(nodes.data()[0]), nodes.data(), GL_DYNAMIC_DRAW);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, ssbo[2]);
 
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo[3]);
-    glBufferData(GL_SHADER_STORAGE_BUFFER, 25 * sizeof(nodes.data()[0]), nodes.data(), GL_DYNAMIC_DRAW);
+    glBufferData(GL_SHADER_STORAGE_BUFFER, 25 * sizeof(parents.data()[0]), parents.data(), GL_DYNAMIC_DRAW);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, ssbo[3]);
 
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo[4]);
-    glBufferData(GL_SHADER_STORAGE_BUFFER, 25 * sizeof(parents.data()[0]), parents.data(), GL_DYNAMIC_DRAW);
+    glBufferData(GL_SHADER_STORAGE_BUFFER, sizeInBytes, state.data(), GL_DYNAMIC_DRAW);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, ssbo[4]);
-
 
     unsigned int computeShader = createShader(GL_COMPUTE_SHADER, "src/shaders/compute.comp.glsl");
     unsigned int computeShaderProgram = createComputeShaderProgram(computeShader); 
@@ -261,8 +259,9 @@ int main() {
     glDispatchCompute(1,1,1);
     glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 
+
     std::vector<float> final_data(N);
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo[0]);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo[4]);
     glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, sizeInBytes, final_data.data());
 
     int count = 0;

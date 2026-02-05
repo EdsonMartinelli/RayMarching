@@ -57,29 +57,26 @@ struct NodeState{
     bool inactiveAncestors;
 };
 
-
-layout(std430, binding = 0) buffer StateOutputBuffer {
-    float data[];
-} stateOutputData;
-
-
-
-
-layout(std430, binding = 1) buffer PrimitivesBuffer {
+layout(std430, binding = 0) buffer PrimitivesBuffer {
     Primitive data[];
 } primitives;
 
-layout(std430, binding = 2) buffer BinaryOperationsBuffer {
+layout(std430, binding = 1) buffer BinaryOperationsBuffer {
     BinaryOperation data[];
 } binaryOperations;
 
-layout(std430, binding = 3) buffer NodesBuffer {
+layout(std430, binding = 2) buffer NodesBuffer {
     Node data[];
 } nodes;
 
-layout(std430, binding = 4) buffer ParentsBuffer {
+layout(std430, binding = 3) buffer ParentsBuffer {
     int data[];
 } parents;
+
+layout(std430, binding = 4) buffer StateOutputBuffer {
+    float data[];
+} stateOutputData;
+
 
 float e = 0.0001;
 
@@ -162,6 +159,8 @@ float evalPrimitive(vec3 p, Primitive pr){
 
 
 void main() {
+
+    
     vec3 p = vec3(10, 10, 10);
     float R = 0.5;
 
@@ -240,7 +239,7 @@ void main() {
             int parentIndex = parents.data[i]; 
             bool hasInactiveAncestors = parentIndex >= 0 ? states[parentIndex].inactiveAncestors : false;
             states[i].inactiveAncestors = hasInactiveAncestors;
-            isGlobalActive = states[i].state == NODESTATE_ACTIVE &&  !hasInactiveAncestors;
+            isGlobalActive = states[i].state == NODESTATE_ACTIVE && !hasInactiveAncestors;
 
             if(parentIndex >= 0){
                 if(states[parentIndex].state == NODESTATE_SKIPPED){
@@ -254,17 +253,17 @@ void main() {
             
          }
          
-         stateOutputData.data[i] = isGlobalActive ?  1: 0;
+        stateOutputData.data[i] = isGlobalActive ?  1 : 0;
+
+         
     }
 
 
 
-
-
-    for (int i = 0; i < NODES_MAX; i++) {
-        if ( states[i].state == NODESTATE_ACTIVE &&  !hasInactiveAncestors;) {
+    // for (int i = 0; i < NODES_MAX; i++) {
+    //     if ( states[i].state == NODESTATE_ACTIVE &&  !hasInactiveAncestors) {
             
-        }
-    }
+    //     }
+    // }
     
 }
