@@ -15,9 +15,9 @@ enum PrimitiveType {
     PRIMITIVE_FLOOR
 };
 
-enum NodeType {
-    NODE_PRIMITIVE,
-    NODE_BINARY
+enum NodeType{
+    NODE_PRIMITIVE = 0,
+    NODE_BINARY = 1
 };
 
 struct Primitive{

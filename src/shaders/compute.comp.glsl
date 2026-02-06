@@ -73,9 +73,26 @@ layout(std430, binding = 3) buffer ParentsBuffer {
     int data[];
 } parents;
 
+
+
 layout(std430, binding = 4) buffer StateOutputBuffer {
     float data[];
 } stateOutputData;
+
+
+
+layout(std430, binding = 5) buffer nodesOutputBuffer {
+    Node data[];
+} nodesOutputData;
+
+layout(std430, binding = 6) buffer parentsOutputBuffer {
+    int data[];
+} parentsOutputData;
+
+layout(std430, binding = 7) buffer NodeCounter {
+    uint numNodes;
+} ;
+
 
 
 float e = 0.0001;
@@ -229,7 +246,7 @@ void main() {
 
 
 
-    int numGlobalActives = 0;
+    uint numGlobalActives = 0;
     for (int i = 0; i < NODES_MAX; i++) {
 
         bool isGlobalActive = false;
@@ -251,19 +268,26 @@ void main() {
                 numGlobalActives++;
             }
             
-         }
+        }
          
         stateOutputData.data[i] = isGlobalActive ?  1 : 0;
 
          
     }
 
+    atomicAdd(numNodes, numGlobalActives);
 
 
-    // for (int i = 0; i < NODES_MAX; i++) {
-    //     if ( states[i].state == NODESTATE_ACTIVE &&  !hasInactiveAncestors) {
-            
-    //     }
-    // }
+
+    int nodeIndex = 0;
+    for (int i = 0; i < NODES_MAX; i++) {
+        NodeState nodeState = states[i];
+        if (nodeState.state == NODESTATE_ACTIVE && !nodeState.inactiveAncestors) {
+            nodesOutputData.data[nodeIndex] = nodes.data[i];
+            parentsOutputData.data[nodeIndex] = parents.data[i];
+
+            nodeIndex++;
+        }
+    }
     
 }
