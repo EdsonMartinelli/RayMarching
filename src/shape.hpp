@@ -42,6 +42,8 @@ struct Primitive{
 struct Node{
     NodeType type;
     int index;
+    int sign; //<--
+    int parent; //<--
 };
 
 void getParents(std::array<int, 25>& parents){
@@ -52,31 +54,31 @@ void getParents(std::array<int, 25>& parents){
 }
 
 void getNodes(std::array<Node, 25>& nodes){
-    nodes = {{ {.type = NODE_BINARY, .index = 0},
-               {.type = NODE_PRIMITIVE, .index = 0},
-               {.type = NODE_BINARY, .index = 1},
-               {.type = NODE_BINARY, .index = 2},
-               {.type = NODE_BINARY, .index = 3},
-               {.type = NODE_BINARY, .index = 4},
-               {.type = NODE_BINARY, .index = 5},
-               {.type = NODE_PRIMITIVE, .index = 1},
-               {.type = NODE_PRIMITIVE, .index = 2},
-               {.type = NODE_BINARY, .index = 6},
-               {.type = NODE_PRIMITIVE, .index = 3},
-               {.type = NODE_PRIMITIVE, .index = 4},
-               {.type = NODE_BINARY, .index = 7},
-               {.type = NODE_PRIMITIVE, .index = 5},
-               {.type = NODE_PRIMITIVE, .index = 6},
-               {.type = NODE_BINARY, .index = 8},
-               {.type = NODE_PRIMITIVE, .index = 7},
-               {.type = NODE_PRIMITIVE, .index = 8},
-               {.type = NODE_BINARY, .index = 9},
-               {.type = NODE_PRIMITIVE, .index = 9},
-               {.type = NODE_BINARY, .index = 10},
-               {.type = NODE_BINARY, .index = 11},
-               {.type = NODE_PRIMITIVE, .index = 10},
-               {.type = NODE_PRIMITIVE, .index = 11},
-               {.type = NODE_PRIMITIVE, .index = 12}
+    nodes = {{ {.type = NODE_BINARY, .index = 0, .sign = 0, .parent = -1},
+               {.type = NODE_PRIMITIVE, .index = 0, .sign = 0, .parent = 0},
+               {.type = NODE_BINARY, .index = 1, .sign = 0, .parent = 0},
+               {.type = NODE_BINARY, .index = 2, .sign = 0, .parent = 2},
+               {.type = NODE_BINARY, .index = 3, .sign = 0, .parent = 3},
+               {.type = NODE_BINARY, .index = 4, .sign = 0, .parent = 4},
+               {.type = NODE_BINARY, .index = 5, .sign = 0, .parent = 5},
+               {.type = NODE_PRIMITIVE, .index = 1, .sign = 0, .parent = 6},
+               {.type = NODE_PRIMITIVE, .index = 2, .sign = 0, .parent = 6},
+               {.type = NODE_BINARY, .index = 6, .sign = 0, .parent = 5},
+               {.type = NODE_PRIMITIVE, .index = 3, .sign = 0, .parent = 9},
+               {.type = NODE_PRIMITIVE, .index = 4, .sign = 0, .parent = 9},
+               {.type = NODE_BINARY, .index = 7, .sign = 0, .parent = 4},
+               {.type = NODE_PRIMITIVE, .index = 5, .sign = 0, .parent = 12},
+               {.type = NODE_PRIMITIVE, .index = 6, .sign = 0, .parent = 12},
+               {.type = NODE_BINARY, .index = 8, .sign = 0, .parent = 3},
+               {.type = NODE_PRIMITIVE, .index = 7, .sign = 0, .parent = 15},
+               {.type = NODE_PRIMITIVE, .index = 8, .sign = 0, .parent = 15},
+               {.type = NODE_BINARY, .index = 9, .sign = 0, .parent = 2},
+               {.type = NODE_PRIMITIVE, .index = 9, .sign = 0, .parent = 18},
+               {.type = NODE_BINARY, .index = 10, .sign = 0, .parent = 18},
+               {.type = NODE_BINARY, .index = 11, .sign = 0, .parent = 20},
+               {.type = NODE_PRIMITIVE, .index = 10, .sign = 0, .parent = 21},
+               {.type = NODE_PRIMITIVE, .index = 11, .sign = 0, .parent = 21},
+               {.type = NODE_PRIMITIVE, .index = 12, .sign = 0, .parent = 20}
             }};
 }
 

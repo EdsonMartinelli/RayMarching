@@ -315,6 +315,8 @@ int main() {
     for (const auto& element : final_nodes) {
         std::cout << count << " Index: " << element.index << std::endl;
         std::cout << count << " Type: " << element.type << std::endl;
+        std::cout << count << " Sign: " << element.sign << std::endl;
+        std::cout << count << " Parent: " << element.parent << std::endl;
         count++;
     }
 

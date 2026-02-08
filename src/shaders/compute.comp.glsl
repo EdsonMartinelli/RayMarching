@@ -44,6 +44,8 @@ struct Primitive{
 struct Node{
     int type;
     int index;
+    int sign; //<--
+    int parent; //<--
 };
 
 
@@ -93,7 +95,8 @@ layout(std430, binding = 7) buffer NodeCounter {
     uint numNodes;
 } ;
 
-
+// shared Node activeNode[25]
+const int NODES_MAX = 25;
 
 float e = 0.0001;
 
@@ -181,7 +184,7 @@ void main() {
     vec3 p = vec3(10, 10, 10);
     float R = 0.5;
 
-    const int NODES_MAX = 25;
+
     NodeState states[NODES_MAX];
     Stack stack[NODES_MAX];
     int stackIndex = 0;
@@ -253,14 +256,17 @@ void main() {
          if (states[i].state == NODESTATE_INACTIVE) {
             states[i].inactiveAncestors = true;
          }else {
-            int parentIndex = parents.data[i]; 
+            //int parentIndex = parents.data[i]; 
+            int parentIndex = nodes.data[i].parent;
             bool hasInactiveAncestors = parentIndex >= 0 ? states[parentIndex].inactiveAncestors : false;
             states[i].inactiveAncestors = hasInactiveAncestors;
             isGlobalActive = states[i].state == NODESTATE_ACTIVE && !hasInactiveAncestors;
 
             if(parentIndex >= 0){
                 if(states[parentIndex].state == NODESTATE_SKIPPED){
-                    parents.data[i] = parents.data[parentIndex];
+                    //parents.data[i] = parents.data[parentIndex];
+
+                    nodes.data[i].parent = nodes.data[parentIndex].parent;
                 }
             }
 
@@ -270,8 +276,7 @@ void main() {
             
         }
          
-        stateOutputData.data[i] = isGlobalActive ?  1 : 0;
-
+       stateOutputData.data[i] = isGlobalActive ?  1 : 0;
          
     }
 
@@ -284,7 +289,7 @@ void main() {
         NodeState nodeState = states[i];
         if (nodeState.state == NODESTATE_ACTIVE && !nodeState.inactiveAncestors) {
             nodesOutputData.data[nodeIndex] = nodes.data[i];
-            parentsOutputData.data[nodeIndex] = parents.data[i];
+            //parentsOutputData.data[nodeIndex] = parents.data[i];
 
             nodeIndex++;
         }
