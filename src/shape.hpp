@@ -46,6 +46,12 @@ struct Node{
     int parent; //<--
 };
 
+struct CellInfo{
+    unsigned int offset;
+    unsigned int size;
+};
+
+
 void getParents(std::array<int, 25>& parents){
     parents = {-1,0,0,
                 2,3,4,5,6,6,5,9,9,4,12,12,

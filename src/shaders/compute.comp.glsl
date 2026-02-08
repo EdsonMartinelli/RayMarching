@@ -48,6 +48,11 @@ struct Node{
     int parent; //<--
 };
 
+struct CellInfo{
+    uint offset;
+    uint size;
+};
+
 
 struct Stack{
     float value;
@@ -71,9 +76,9 @@ layout(std430, binding = 2) buffer NodesBuffer {
     Node data[];
 } nodes;
 
-layout(std430, binding = 3) buffer ParentsBuffer {
+layout(std430, binding = 3) buffer CellInfoBuffer {
     int data[];
-} parents;
+} cellInfo;
 
 
 
@@ -83,13 +88,13 @@ layout(std430, binding = 4) buffer StateOutputBuffer {
 
 
 
-layout(std430, binding = 5) buffer nodesOutputBuffer {
+layout(std430, binding = 5) buffer NodesOutputBuffer {
     Node data[];
-} nodesOutputData;
+} nodesOutput;
 
-layout(std430, binding = 6) buffer parentsOutputBuffer {
-    int data[];
-} parentsOutputData;
+layout(std430, binding = 6) buffer CellInfoOutputBuffer {
+    CellInfo data[];
+} cellInfoOutput;
 
 layout(std430, binding = 7) buffer NodeCounter {
     uint numNodes;
@@ -183,7 +188,7 @@ void main() {
     
     vec3 p = vec3(10, 10, 10);
     float R = 0.5;
-
+    const int cellIndex = 0;
 
     NodeState states[NODES_MAX];
     Stack stack[NODES_MAX];
@@ -256,7 +261,6 @@ void main() {
          if (states[i].state == NODESTATE_INACTIVE) {
             states[i].inactiveAncestors = true;
          }else {
-            //int parentIndex = parents.data[i]; 
             int parentIndex = nodes.data[i].parent;
             bool hasInactiveAncestors = parentIndex >= 0 ? states[parentIndex].inactiveAncestors : false;
             states[i].inactiveAncestors = hasInactiveAncestors;
@@ -264,7 +268,6 @@ void main() {
 
             if(parentIndex >= 0){
                 if(states[parentIndex].state == NODESTATE_SKIPPED){
-                    //parents.data[i] = parents.data[parentIndex];
 
                     nodes.data[i].parent = nodes.data[parentIndex].parent;
                 }
@@ -280,17 +283,18 @@ void main() {
          
     }
 
-    atomicAdd(numNodes, numGlobalActives);
+    uint cellOffset = atomicAdd(numNodes, numGlobalActives);
 
-
+    CellInfo newCell;
+    newCell.offset = cellOffset;
+    newCell.size = numGlobalActives;
+    cellInfoOutput.data[cellIndex] = newCell;
 
     int nodeIndex = 0;
     for (int i = 0; i < NODES_MAX; i++) {
         NodeState nodeState = states[i];
         if (nodeState.state == NODESTATE_ACTIVE && !nodeState.inactiveAncestors) {
-            nodesOutputData.data[nodeIndex] = nodes.data[i];
-            //parentsOutputData.data[nodeIndex] = parents.data[i];
-
+            nodesOutput.data[nodeIndex] = nodes.data[i];
             nodeIndex++;
         }
     }

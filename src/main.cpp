@@ -220,12 +220,11 @@ int main() {
     std::array<Primitive,13> primitives;
     std::array<BinaryOperation,12> binaryOperations;
     std::array<Node,25> nodes;
-    std::array<int,25> parents;
+    std::array<CellInfo,1> cells = {{{.offset = 0, .size = 25}}};
 
     getPrimitives(primitives);
     getBinaryOperations(binaryOperations);
     getNodes(nodes);
-    getParents(parents);
 
     std::cout << primitives.at(1).offsetX << std::endl;
 
@@ -248,7 +247,7 @@ int main() {
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, ssbo[2]);
 
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo[3]);
-    glBufferData(GL_SHADER_STORAGE_BUFFER, 25 * sizeof(parents.data()[0]), parents.data(), GL_DYNAMIC_DRAW);
+    glBufferData(GL_SHADER_STORAGE_BUFFER, 1 * sizeof(cells.data()[0]), cells.data(), GL_DYNAMIC_DRAW);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, ssbo[3]);
 
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo[4]);
@@ -320,15 +319,16 @@ int main() {
         count++;
     }
 
-     std::cout << "PARENTS:"<< std::endl;
+     std::cout << "CELL INFO:"<< std::endl;
 
-    std::vector<int> final_parents(finalCount);
+    std::vector<CellInfo> final_cellInfo(finalCount);
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo[6]);
-    glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, finalCount * sizeof(int), final_parents.data());
+    glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, finalCount * sizeof(CellInfo), final_cellInfo.data());
 
     count = 0;
-    for (const auto& element : final_parents) {
-        std::cout << count << ": " << element << std::endl;
+    for (const auto& element : final_cellInfo) {
+        std::cout << count << " Offset: " << element.offset << std::endl;
+        std::cout << count << " Size: " << element.size << std::endl;
         count++;
     }
 
