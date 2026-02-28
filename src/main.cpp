@@ -23,7 +23,9 @@
 
 #include "shape.hpp"
 
+#define CALCULATE_FPS 0 /**< Defines if the program will calculate FPS (1) or not (0)*/
 #define CALCULATE_SHADER_TIME 0 /**< Defines if the program will calculate shader time (1) or not (0)*/
+#define USE_COMPUTE_SHADER 0 /**< Defines if the program gonna use compute shader (1) or not (0)*/
 
 int WINDOW_WIDTH = 800; /**< Global window width size. */
 int WINDOW_HEIGHT = 600; /**< Global window height size. */
@@ -79,6 +81,8 @@ void framebufferSizeCallback(GLFWwindow* window, int width, int height)
     glViewport(0, 0, WINDOW_WIDTH, (int)WINDOW_HEIGHT);
 }
 
+
+#if CALCULATE_FPS
 /**
  * @brief Calculate metrics related to FPS.
  * 
@@ -106,8 +110,9 @@ void calculteFPSMetrics(double FPSamples[]){
     printf("Variância de FPS nas amostras: %.2f\n", varianceFPSSamples);
     printf("Desvio Padrão de FPS nas amostras: %.2f\n", sqrt(varianceFPSSamples));
 }
+#endif
 
-
+#if CALCULATE_SHADER_TIME
 /**
  * @brief Calculate metrics related to Shader time.
  * 
@@ -115,6 +120,7 @@ void calculteFPSMetrics(double FPSamples[]){
  * 
  * @param [in] ShaderTimeSamples Shader time samples.
  */
+
 void calculteShaderMetrics(double ShaderTimeSamples[]){
     double averageShaderTimeSamples = 0;
     for(int i = 0; i < SAMPLES; i++){
@@ -133,6 +139,7 @@ void calculteShaderMetrics(double ShaderTimeSamples[]){
     printf("Variância de FPS nas amostras: %.4f\n", varianceShaderTimeSamples);
     printf("Desvio Padrão de FPS nas amostras: %.4f\n", sqrt(varianceShaderTimeSamples));
 }
+#endif
 
 /**
  * @brief Main function of program to generate image.
@@ -174,7 +181,7 @@ int main() {
     glViewport(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT);
 
     unsigned int vertexShader = createShader(GL_VERTEX_SHADER, "src/shaders/vertexshader.vert");
-    unsigned int fragmentShader = createShader(GL_FRAGMENT_SHADER, "src/shaders/UFABCFull3D.frag");
+    unsigned int fragmentShader = createShader(GL_FRAGMENT_SHADER, "src/shaders/2D/d2Approximation.frag");
     unsigned int shaderProgram = createShaderProgram(vertexShader, fragmentShader); 
 
     float vertices[] = {
@@ -210,7 +217,7 @@ int main() {
 
 
 
-
+#if USE_COMPUTE_SHADER
     const int N = 25; 
     size_t sizeInBytes = N * sizeof(float); 
 
@@ -338,10 +345,7 @@ int main() {
         count++;
     }
 
-
-
-
-
+#endif
 
     //Shader Time
     unsigned int queryID;
@@ -380,7 +384,7 @@ int main() {
 
         glEndQuery(GL_TIME_ELAPSED);
 
-        if(CALCULATE_SHADER_TIME){
+#if CALCULATE_SHADER_TIME
             GLint available = GL_FALSE;
             while (available == GL_FALSE) {
                 glGetQueryObjectiv(queryID, GL_QUERY_RESULT_AVAILABLE, &available);
@@ -389,21 +393,25 @@ int main() {
             glGetQueryObjectui64v(queryID, GL_QUERY_RESULT, &elapsedTime);
             double ms = (double)elapsedTime / 1000000.0;
             totalShaderTime += ms;
-        }
+#endif
 
         glfwSwapBuffers(window);
         glfwPollEvents();
 
          //FPS
         if (totalTime >= ONE_MINUTE) {
+
+#if CALCULATE_FPS
             double averageFPS = (double)totalFrames / totalTime;
             printf("Média de FPS em %.1f segundos: %.2f\n", totalTime, averageFPS);
             FPSamples[samplesCount] = averageFPS;
-            if(CALCULATE_SHADER_TIME){
-                double averageShaderTime = (double)totalShaderTime / totalFrames;
-                ShaderTimeSamples[samplesCount] = averageShaderTime;
-                printf("Média de tempo do shader em %.1f segundos: %.4f (ms)\n", totalTime, averageShaderTime);
-            }
+#endif
+
+#if CALCULATE_SHADER_TIME
+            double averageShaderTime = (double)totalShaderTime / totalFrames;
+            ShaderTimeSamples[samplesCount] = averageShaderTime;
+            printf("Média de tempo do shader em %.1f segundos: %.4f (ms)\n", totalTime, averageShaderTime);
+#endif
 
             samplesCount++;
             totalShaderTime = 0;
@@ -411,8 +419,14 @@ int main() {
             totalFrames = 0;
 
             if(samplesCount == SAMPLES){
+
+#if CALCULATE_FPS
                 calculteFPSMetrics(FPSamples);
-                if(CALCULATE_SHADER_TIME) calculteShaderMetrics(ShaderTimeSamples);
+#endif
+
+#if CALCULATE_SHADER_TIME
+                calculteShaderMetrics(ShaderTimeSamples);
+#endif
                 return 0;
             }
         }

@@ -29,10 +29,10 @@ vec2 calculateLinearPoint(vec2 origin, float m, float x){
 float sdPlane(vec2 p){
     vec2 offset = vec2(-0.82, 0.32);
     p = p - offset;
-    float f = p.x + 0.09*sin(9.*p.y);
-    vec2 df = vec2(1, 0.81 * cos(9.*p.y));
-    float g = max(length(df), 0.0001);
-    return f / g;
+    float f0 = p.x + 0.09*sin(9.*p.y);
+    vec2 f1 = vec2(1, 0.81 * cos(9.*p.y));
+    float nf1 = max(length(f1), 0.0001);
+    return f0 / nf1;
 }
 
 float sdOBox(vec2 p, vec2 centerSideOrigin, float m, float xCenterEnd, float th){
