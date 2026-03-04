@@ -38,6 +38,10 @@ layout (location = 0) out vec4 fragColor;
 */
 layout (location = 0) uniform vec2 iResolution;
 
+/**
+ * @ingroup FragVariables
+ * @brief Time information for rotate.
+*/
 layout (location = 1) uniform float iTimer;
 
 /**

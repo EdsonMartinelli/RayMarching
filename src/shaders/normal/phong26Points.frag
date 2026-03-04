@@ -48,6 +48,10 @@ layout (location = 0) out vec4 fragColor;
 */
 layout (location = 0) uniform vec2 iResolution;
 
+/**
+ * @ingroup FragVariables
+ * @brief Time information for rotate.
+*/
 layout (location = 1) uniform float iTimer;
 
 /**
@@ -179,6 +183,7 @@ float sdPlaneCutter(vec2 p){
     return f / g;
 }
 
+
 /**
  * @brief Oriented Box SDF.
  *
@@ -225,21 +230,6 @@ float sdCircle(vec2 p, float r){
  */
 
 ObjectHit sdfUFABC(vec3 p){
-    ObjectHit objHit;
-
-    float t = length(p) - 1.5;
-    if(t >= 0.1){
-        objHit.color = vec3(0.,0.,1.0);
-        objHit.value = t;
-        return objHit;
-    } 
-
-    // if(t >= 1.0){
-    //     objHit.color = vec3(0.,0.,1.0);
-    //     objHit.value = 1.0;
-    //     return objHit;
-    // } 
-
     float insideRadius = 0.42;
     float outsideRadius = 0.5;
     float halfDistanceCenterX = outsideRadius - ((outsideRadius - insideRadius) / 2.0);
@@ -271,7 +261,7 @@ ObjectHit sdfUFABC(vec3 p){
 
     //float final = min(greenArcs, yellowLines);
     
-    
+    ObjectHit objHit;
     if(yellowLines < greenArcs){
         vec3 trueColor = vec3(254.,206.,2.);
         objHit.color = trueColor / 255.;
@@ -326,32 +316,32 @@ ObjectHit sdf(vec3 p){
 /**
  * @brief Get implicit functions normal.
  *
- * Get normal of a given point in the world using a numerical differentiation (Forward Difference).
- * The small value of the method is applied in the three axes (x, y, z).
+ * Get normal of a given point in the world using a numerical differentiation (Central Difference) with
+ * 18 sample points. The small value of the method is applied in the three axes (x, y, z).
  *
  * @param [in] p Normalized 3D space position.
  * @param [in] pointValue SDF value at point p.
  * @return Normal vector at the point.
  */
-// vec3 getNormal(in vec3 p, float pointValue) {	
-// 	vec3 normal;
-//     float hOffset = 0.0001;
-// 	vec2 h = vec2(hOffset, 0.0);
-//     normal.x = (sdf(p + h.xyy).value - pointValue) / hOffset;
-// 	normal.y = (sdf(p + h.yxy).value - pointValue) / hOffset;
-// 	normal.z = (sdf(p + h.yyx).value - pointValue) / hOffset;
-// 	return normalize(normal);
-// }
-vec3 getNormal(in vec3 p, float pointValue) {	
+vec3 getNormal(in vec3 p) {	
 	vec3 normal;
     float hOffset = 0.0001;
-	vec2 h = vec2(hOffset, 0.0);
-    normal.x = (sdf(p + h.xyy).value - sdf(p - h.xyy).value);
-	normal.y = (sdf(p + h.yxy).value - sdf(p - h.yxy).value);
-	normal.z = (sdf(p + h.yyx).value - sdf(p - h.yyx).value);
+    for(int x = -1; x <= 1; x++){
+        for(int y = -1; y <= 1; y++){
+            for(int z = -1; z <= 1; z++){
+                int v = abs(x) + abs(y) + abs(z);
+                if(v == 0) continue;
+                
+                vec3 dir = vec3(float(x), float(y), float(z));
+                float weight = 1.0 / length(dir); 
+                    
+                float r = sdf(p + dir * hOffset).value;
+                normal += dir * r * weight;
+            }
+        }
+    }
     return normalize(normal);
 }
-
 
 /**
  * @brief Apply gamma correction to a color.
@@ -405,29 +395,17 @@ vec3 getDirection(vec2 uv){
  * @return Struct RayInfo containing the object hit information, distance of origin given a direction
  * and steps.
  */
-RayInfo relaxationRayMarching(vec3 direction){
+RayInfo rayMarching(vec3 direction){
     float count = 0.0;
     float t = 0.0;
-    float omega = 1.1;
-    float previousR = 0.0;
-    float stepSize = 0.0;
     ObjectHit objHit;
     while(t < D) {
         objHit = sdf(origin + direction * t);
         float r = objHit.value;
-        if(abs(r) < e) break;
+        if(r < e) break;
         if(count > MAX_STEP) break;
-
-        if(omega > 1 && abs(previousR) + abs(r) <= stepSize){
-            stepSize = -stepSize;
-            omega = 1.0;
-        } else {           
-            stepSize = r * omega;
-
-        }   
-        previousR = r;
-        t += stepSize;
-        count = count + 1; 
+        t += r;
+        count = count + 1;
     }
     RayInfo ri;
     ri.objHit = objHit;
@@ -435,22 +413,20 @@ RayInfo relaxationRayMarching(vec3 direction){
     ri.count = count;
     return ri;
 }
+
 /**
  * @brief Blinn-Phong illumination model.
  *
  * Phong Illuminition model with Blinn optimazation.
  *
  * @param [in] cameraDirection Camera direction.
- * @param [in] position Point where the ray hits.
- * @param [in] normal Normal of position.
- * @param [in] objColor Color of the object hit by the ray.
- * @param [in] illumination quantity of light hitting the surface.
+ * @param [in] ri Struct RayInfo containing Ray Marching information.
  * @return Correct color for phong illumination. 
  */
-vec3 phongIllumination(vec3 cameraDirection,
-                       vec3 position, vec3 normal,
-                       vec3 objColor,
-                       float illumination){
+vec3 phongIllumination(vec3 cameraDirection, RayInfo ri){
+    vec3 position = origin + cameraDirection * ri.dist;
+    vec3 normal = getNormal(position);
+    vec3 objColor = (ri.objHit).color;
     vec3 ambientColor = (objColor * 0.1) * (lightColor * 0.1);
     vec3 lightDirection = normalize(lightOrigin - position);
     float diffuseReflection = dot(normal, lightDirection);
@@ -459,34 +435,7 @@ vec3 phongIllumination(vec3 cameraDirection,
     float shininess = 1.;
     float facing = diffuseReflection > 0 ?  1 : 0;
     vec3 specularColor = facing * (objColor * 0.9) * (lightColor * 0.9) * pow(max(dot(normal, halfwayVector), 0.0), shininess);
-    return ambientColor + (diffuseColor + specularColor) * illumination;
-}
-
-/**
- * @brief Ray Marching algorithm for shadows.
- *
- * Starting at the hit point, advance the ray based on the direction of the light and value given by
- * the SDF, seeking to reach the maximum distance or hit a solid object to create a shadow.
- *
- * @param [in] originPoint Solid hit point.
- * @param [in] direction Ray direction towards the light origin.
- * @param [in] MAX_DIST Biggest distance between the solid hit point and the light origin.
- * @return Struct RayInfo containing the object hit information, distance of origin given a direction
- * and steps.
- */
-float rayMarchingShadow(vec3 originPoint, vec3 direction, float MAX_DIST){
-    float count = 0.0;
-    float t = 0.0;
-    ObjectHit objHit;
-    while(t < MAX_DIST) {
-        objHit = sdf(originPoint + direction * t);
-        float r = abs(objHit.value);
-        if(r < e) return 0.;
-        if(count > MAX_STEP) return 0.;
-        t += r;
-        count = count + 1;
-    }
-    return 1.;
+    return ambientColor + diffuseColor + specularColor;
 }
 
 /**
@@ -497,23 +446,19 @@ float rayMarchingShadow(vec3 originPoint, vec3 direction, float MAX_DIST){
  */
 void main()
 {
-    //origin = vec3(4.0 *sin(iTimer), 0.0, 4.0 *cos(iTimer));
+    origin = vec3(3.0 *sin(iTimer), 0.0, 3.0 *cos(iTimer));
+    //origin = vec3(-3.0, 0.5, 0.5);
     vec2 uv = normalizeSpace();  
     vec3 cameraDirection = getDirection(uv);  
-    RayInfo ri = relaxationRayMarching(cameraDirection);
+    RayInfo ri = rayMarching(cameraDirection);
     
-    vec3 color = vec3(0.0,0.0,0.0);
+    float p = 1 - (gl_FragCoord.y / iResolution.y);
+    vec3 color = vec3(0.4,0.4,1.0) + vec3(p);
     
+    //vec3 color = vec3(0.0,0.0,0.0);
+
     if(ri.dist < D) {
-        vec3 position = origin + cameraDirection * ri.dist;
-        vec3 normal = getNormal(position, (ri.objHit).value);
-        vec3 objColor = (ri.objHit).color;
-        vec3 lightDirection = lightOrigin - position;
-        float MAX_DIST = length(lightDirection);
-        vec3 normalizedLightDirection = lightDirection / MAX_DIST;
-        float illumination = rayMarchingShadow(position + (normal * e), normalizedLightDirection, MAX_DIST);
-        color = phongIllumination(cameraDirection, position, normal, objColor, illumination);
-             
+        color = phongIllumination(cameraDirection, ri);
     }
 
     fragColor = vec4(gammaCorrection(color),1.0);

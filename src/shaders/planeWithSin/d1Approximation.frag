@@ -240,7 +240,6 @@ void main()
     if(ri.dist < D) {
         vec3 position = origin + direction * ri.dist;
         vec3 normal = getNormal(position, ri.value);
-        //color = vec3((ri.count/MAX_STEP), 0.0, 1.0 - (ri.count/MAX_STEP));
         color =  normal;       
     }
 
