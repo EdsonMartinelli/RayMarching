@@ -1,16 +1,14 @@
 /**
- * @brief UFABC logotype and plane renderized by Ray Maching in 3D using colors.
+ * @brief UFABC logotype and plane renderized by Ray Maching in 3D.
  *
  * UFABC logo in the center of scene, SDF plane (space divider) and
  * camera looking at scene center (right-hand coordinate system). This configuration
  * is renderized by a standard Ray Marching method with maximum distance equals 32.0.
- * This file use struct to store object colors and values and ray informations to color 
- * the scene.
  *
  * @author Edson Martinelli
  * @date 2025
  */
- 
+
 #version 430 core
 
 /**
@@ -21,11 +19,6 @@
 /**
  * @defgroup CameraVariables Camera Variables
  * @brief Variables related to camera system.
-*/
-
-/**
- * @defgroup ObjVariables Object Variables
- * @brief Variables related to objects in scene.
 */
 
 /**
@@ -46,20 +39,17 @@ layout (location = 0) out vec4 fragColor;
 layout (location = 0) uniform vec2 iResolution;
 
 /**
- * @ingroup ObjVariables
- * @brief Object hit struct.
- */
-struct ObjectHit{
-    vec3 color; /**< Object point color. */  
-    float value; /**< Value at object point. */ 
-};
+ * @ingroup FragVariables
+ * @brief Time information for rotate.
+*/
+layout (location = 1) uniform float iTimer;
 
 /**
  * @ingroup RayVariables
  * @brief Ray information struct.
 */
 struct RayInfo{
-    ObjectHit objHit; /**< Object hit at the point */  
+    float value; /**< Value at the point */  
     float dist; /**< Distance from camera origin */  
     float count; /**< Steps from camera origin */
 };
@@ -153,14 +143,15 @@ vec2 calculateLinearPoint(vec2 origin, float m, float x){
  * @param [in] p Normalized 2D pixel position.
  * @return The correct value of SDF at the position.
  */
-float sdPlaneCutter(vec2 p){
-    vec2 offset = vec2(-0.82, 0.245);
+float sdPlane(vec2 p){
+    vec2 offset = vec2(-0.82, 0.32);
     p = p - offset;
-    float f = p.x + 0.09*sin(9.*p.y);
-    vec2 df = vec2(1, 0.81 * cos(9.*p.y));
-    float g = max(length(df),e);
-    return f / g;
+    float f0 = p.x + 0.09*sin(9.*p.y);
+    vec2 f1 = vec2(1, 0.81 * cos(9.*p.y));
+    float nf1 = max(length(f1), 0.0001);
+    return f0 / nf1;   
 }
+
 /**
  * @brief Oriented Box SDF.
  *
@@ -203,10 +194,10 @@ float sdCircle(vec2 p, float r){
  * SDF function of UFABC Logo in 3D space.
  *
  * @param [in] p Normalized 3D space position.
- * @return The struct ObjectHit with the object color and the correct value of SDF at the position.
+ * @return The correct value of SDF at the position.
  */
 
-ObjectHit sdfUFABC(vec3 p){
+float sdfUFABC(vec3 p){
     float insideRadius = 0.42;
     float outsideRadius = 0.5;
     float halfDistanceCenterX = outsideRadius - ((outsideRadius - insideRadius) / 2.0);
@@ -220,38 +211,27 @@ ObjectHit sdfUFABC(vec3 p){
     float ringC = max(sdCircle(p.xy - centerC, outsideRadius), - sdCircle(p.xy - centerC, insideRadius));
 
     float rings = min(ringA, min(ringC, ringB));
-    float ringCCutter = sdOBox(p.xy, centerC, 1.690,1.0, 0.16);
 
     float boxSlope = -0.5774; // 30 degree in radian
     float boxXCenterSideEnd = -1.15;
+
     float box = sdOBox(p.xy, centerC, boxSlope,boxXCenterSideEnd, 0.16);
-    
-    float greenArcs = max(rings, -min(box,ringCCutter));
+    float arcCCutter = sdOBox(p.xy, centerC, 1.690,1.0, 0.16);
+
+    float greenArcs = max(rings, -min(box,arcCCutter));
 
     float boxCutter = sdOBox(p.xy, centerC, boxSlope,boxXCenterSideEnd, 0.02);
     float circleCutter = sdCircle(p.xy - centerC, insideRadius);
-    float planeCutter = sdPlaneCutter(p.xy);
+    float planeCutter = sdPlane(p.xy);
 
     float cutter = min(smoothMin(boxCutter, circleCutter, 0.060), planeCutter);
 
     float yellowLines = max(box, -cutter);
 
-    //float final = min(greenArcs, yellowLines);
+    float final = min(greenArcs, yellowLines);
     
-    ObjectHit objHit;
-    if(yellowLines < greenArcs){
-        vec3 trueColor = vec3(254.,206.,2.);
-        objHit.color = trueColor / 255.;
-        objHit.value = opExtrusion(p, yellowLines, 0.5);
-        return objHit;
-    }
-
-    vec3 trueColor = vec3(5.,90.,57.);
-    objHit.color = trueColor / 255.;
-    objHit.value = opExtrusion(p, greenArcs, 0.5);
-    return objHit;
+    return opExtrusion(p,final, 0.5);
 }
-
 
 /**
  * @brief Plane SDF.
@@ -260,13 +240,10 @@ ObjectHit sdfUFABC(vec3 p){
  * position is greatem than -1.0; negative, if position is less than -1.0.
  *
  * @param [in] p Normalized 3D space position.
- * @return The struct ObjectHit with the object color and the correct value of SDF at the position.
+ * @return The correct value of SDF at the position.
  */
-ObjectHit sdfFloor(vec3 p){
-    ObjectHit objHit;
-    objHit.color= vec3(1.,0.,0.);
-    objHit.value = p.y + 1.0;
-    return objHit;
+float sdfFloor(vec3 p){
+    return p.y + 1.0;
 }
 
 /**
@@ -275,36 +252,32 @@ ObjectHit sdfFloor(vec3 p){
  * SDF function that combines UFABC logo SDF and plane SDF using min funcion at a given point.
  *
  * @param [in] p Normalized 3D space position.
- * @return The struct ObjectHit with the object color and the correct value of SDF at the position.
+ * @return The correct value of SDF at the position.
  */
-ObjectHit sdf(vec3 p){
-    ObjectHit objHitUFABC = sdfUFABC(p);
-    ObjectHit objHitFloor = sdfFloor(p);
-
-    if(objHitUFABC.value < objHitFloor.value){
-        return objHitUFABC;
-    }
-    return objHitFloor;
+float sdf(vec3 p){
+    return min(sdfUFABC(p), sdfFloor(p));
 }
 
 /**
  * @brief Get implicit functions normal.
  *
- * Get normal of a given point in the world using a numerical differentiation (Forward Difference).
- * The small value of the method is applied in the three axes (x, y, z).
+ * Get normal of a given point in the world using a numerical differentiation (Central Finite Difference).
+ * The small value of the method is applied in the three axes (x, y, z) and the final result is normalized to all
+ * values stays between 0.0 and 1.0 because it is only used to color.
  *
  * @param [in] p Normalized 3D space position.
- * @param [in] pointValue SDF value at point p.
  * @return Normal vector at the point.
  */
-vec3 getNormal(in vec3 p, float pointValue) {	
+vec3 getNormal(in vec3 p) {	
 	vec3 normal;
     float hOffset = 0.0001;
 	vec2 h = vec2(hOffset, 0.0);
-    normal.x = (sdf(p + h.xyy).value - pointValue) / hOffset;
-	normal.y = (sdf(p + h.yxy).value - pointValue) / hOffset;
-	normal.z = (sdf(p + h.yyx).value - pointValue) / hOffset;
-	return normalize(normal);
+    normal.x = (sdf(p + h.xyy) - sdf(p - h.xyy));
+	normal.y = (sdf(p + h.yxy) - sdf(p - h.yxy));
+	normal.z = (sdf(p + h.yyx) - sdf(p - h.yyx));
+    vec3 color = normalize(normal) * 0.5 + 0.5;
+    return normalize(pow(color, vec3(2)) * 1.2);
+    //return normalize(normal);
 }
 
 /**
@@ -362,17 +335,16 @@ vec3 getDirection(vec2 uv){
 RayInfo rayMarching(vec3 direction){
     float count = 0.0;
     float t = 0.0;
-    ObjectHit objHit;
+    float r = 0.0;
     while(t < D) {
-        objHit = sdf(origin + direction * t);
-        float r = objHit.value;
+        r = sdf(origin + direction * t);
         if(r < e) break;
         if(count > MAX_STEP) break;
         t += r;
         count = count + 1;
     }
     RayInfo ri;
-    ri.objHit = objHit;
+    ri.value = r;
     ri.dist = t;
     ri.count = count;
     return ri;
@@ -385,19 +357,21 @@ RayInfo rayMarching(vec3 direction){
  */
 void main()
 {
+    //origin = vec3(3.0 *sin(iTimer), 0.0, 3.0 *cos(iTimer));
+    //float PI = 3.1415;
+    //origin = vec3(3.0 * sin(PI/4), 0.0, -3.0 * cos(PI));
     vec2 uv = normalizeSpace();  
     vec3 direction = getDirection(uv);  
     RayInfo ri = rayMarching(direction);
-    
-    vec3 color = vec3(0.0,0.0,0.0);
+
+    float p = 1 - (gl_FragCoord.y / iResolution.y);
+    vec3 color = vec3(0.4,0.4,1.0) + vec3(p) ;
     
     if(ri.dist < D) {
         vec3 position = origin + direction * ri.dist;
-       // vec3 normal = getNormal(position, (ri.objHit).value);
-        vec3 objColor = (ri.objHit).color;
-        color = objColor;
-       // vec3 x = normal * (dot(normal, objColor));
-       // color =  (objColor + clamp(x, vec3(-1.,-1.,-1.), vec3(1.,1.,1.))) / 2.;       
+        vec3 normal = getNormal(position);
+        color =  normal;       
     }
+
     fragColor = vec4(gammaCorrection(color),1.0);
 }

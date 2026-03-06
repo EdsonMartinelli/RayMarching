@@ -437,15 +437,15 @@ vec3 phongIllumination(vec3 cameraDirection, RayInfo ri){
 void main()
 {
     //origin = vec3(3.0 *sin(iTimer), 0.0, 3.0 *cos(iTimer));
-    origin = vec3(-3.0, 0.5, 0.5);
+    origin = vec3(-1.5, 0.25, -0.5) * vec3(0.85);
     vec2 uv = normalizeSpace();  
     vec3 cameraDirection = getDirection(uv);  
     RayInfo ri = rayMarching(cameraDirection);
     
-    // float p = 1 - (gl_FragCoord.y / iResolution.y);
-    // vec3 color = vec3(0.4,0.4,1.0) + vec3(p) ;
+    float p = 1 - (gl_FragCoord.y / iResolution.y);
+    vec3 color = vec3(0.4,0.4,1.0) + vec3(p) ;
 
-    vec3 color = vec3(0.0,0.0,0.0);
+    //vec3 color = vec3(0.0,0.0,0.0);
     
     if(ri.dist < D) {
         color = phongIllumination(cameraDirection, ri);

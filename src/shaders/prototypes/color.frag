@@ -1,14 +1,16 @@
 /**
- * @brief UFABC logotype and plane renderized by Ray Maching in 3D.
+ * @brief UFABC logotype and plane renderized by Ray Maching in 3D using colors.
  *
  * UFABC logo in the center of scene, SDF plane (space divider) and
  * camera looking at scene center (right-hand coordinate system). This configuration
  * is renderized by a standard Ray Marching method with maximum distance equals 32.0.
+ * This file use struct to store object colors and values and ray informations to color 
+ * the scene.
  *
  * @author Edson Martinelli
  * @date 2025
  */
-
+ 
 #version 430 core
 
 /**
@@ -27,11 +29,6 @@
 */
 
 /**
- * @defgroup LightVariables Light Variables
- * @brief Variables related to light.
-*/
-
-/**
  * @defgroup RayVariables Ray Variables
  * @brief Variables related to Ray Marching.
 */
@@ -47,8 +44,6 @@ layout (location = 0) out vec4 fragColor;
  * @brief Viewport and window resolution(x = width, y = height).
 */
 layout (location = 0) uniform vec2 iResolution;
-
-layout (location = 1) uniform float iTimer;
 
 /**
  * @ingroup ObjVariables
@@ -84,18 +79,6 @@ vec3 lookAt = vec3(0.0, 0.0, 0.0);
  * @brief Vector for up direction. 
 */
 vec3 vup = normalize(vec3(0.0, 1.0, 0.0));
-
-/**
- * @ingroup LightVariables
- * @brief Light point position. 
-*/
-vec3 lightOrigin = vec3(0.0, 1.0, 2.0);
-
-/**
- * @ingroup LightVariables
- * @brief Light color. 
-*/
-vec3 lightColor =  vec3(1.0, 1.0, 1.0);
 
 /**
  * @ingroup RayVariables
@@ -170,7 +153,7 @@ vec2 calculateLinearPoint(vec2 origin, float m, float x){
  * @param [in] p Normalized 2D pixel position.
  * @return The correct value of SDF at the position.
  */
-float sdPlaneCutter(vec2 p){
+float sdPlane(vec2 p){
     vec2 offset = vec2(-0.82, 0.245);
     p = p - offset;
     float f = p.x + 0.09*sin(9.*p.y);
@@ -248,7 +231,7 @@ ObjectHit sdfUFABC(vec3 p){
 
     float boxCutter = sdOBox(p.xy, centerC, boxSlope,boxXCenterSideEnd, 0.02);
     float circleCutter = sdCircle(p.xy - centerC, insideRadius);
-    float planeCutter = sdPlaneCutter(p.xy);
+    float planeCutter = sdPlane(p.xy);
 
     float cutter = min(smoothMin(boxCutter, circleCutter, 0.060), planeCutter);
 
@@ -270,6 +253,7 @@ ObjectHit sdfUFABC(vec3 p){
     return objHit;
 }
 
+
 /**
  * @brief Plane SDF.
  *
@@ -283,6 +267,8 @@ ObjectHit sdfFloor(vec3 p){
     ObjectHit objHit;
     objHit.color= vec3(1.,0.,0.);
     objHit.value = p.y + 1.0;
+    p += vec3(D * 2.0, 0.0, D * 2.0);
+    if((int(p.x) + int(p.z)) % 2 == 0) objHit.color = vec3(0.5,0.,0.);
     return objHit;
 }
 
@@ -295,15 +281,13 @@ ObjectHit sdfFloor(vec3 p){
  * @return The struct ObjectHit with the object color and the correct value of SDF at the position.
  */
 ObjectHit sdf(vec3 p){
-    ObjectHit min;
     ObjectHit objHitUFABC = sdfUFABC(p);
     ObjectHit objHitFloor = sdfFloor(p);
 
-    min = objHitFloor;
     if(objHitUFABC.value < objHitFloor.value){
-        min = objHitUFABC;
+        return objHitUFABC;
     }
-    return min;
+    return objHitFloor;
 }
 
 /**
@@ -316,25 +300,15 @@ ObjectHit sdf(vec3 p){
  * @param [in] pointValue SDF value at point p.
  * @return Normal vector at the point.
  */
-// vec3 getNormal(in vec3 p, float pointValue) {	
-// 	vec3 normal;
-//     float hOffset = 0.0001;
-// 	vec2 h = vec2(hOffset, 0.0);
-//     normal.x = (sdf(p + h.xyy).value - pointValue) / hOffset;
-// 	normal.y = (sdf(p + h.yxy).value - pointValue) / hOffset;
-// 	normal.z = (sdf(p + h.yyx).value - pointValue) / hOffset;
-// 	return normalize(normal);
-// }
 vec3 getNormal(in vec3 p, float pointValue) {	
 	vec3 normal;
     float hOffset = 0.0001;
 	vec2 h = vec2(hOffset, 0.0);
-    normal.x = (sdf(p + h.xyy).value - sdf(p - h.xyy).value);
-	normal.y = (sdf(p + h.yxy).value - sdf(p - h.yxy).value);
-	normal.z = (sdf(p + h.yyx).value - sdf(p - h.yyx).value);
-    return normalize(normal);
+    normal.x = (sdf(p + h.xyy).value - pointValue) / hOffset;
+	normal.y = (sdf(p + h.yxy).value - pointValue) / hOffset;
+	normal.z = (sdf(p + h.yyx).value - pointValue) / hOffset;
+	return normalize(normal);
 }
-
 
 /**
  * @brief Apply gamma correction to a color.
@@ -406,61 +380,6 @@ RayInfo rayMarching(vec3 direction){
     ri.count = count;
     return ri;
 }
-
-/**
- * @brief Blinn-Phong illumination model.
- *
- * Phong Illuminition model with Blinn optimazation.
- *
- * @param [in] cameraDirection Camera direction.
- * @param [in] position Point where the ray hits.
- * @param [in] normal Normal of position.
- * @param [in] objColor Color of the object hit by the ray.
- * @param [in] illumination quantity of light hitting the surface.
- * @return Correct color for phong illumination. 
- */
-vec3 phongIllumination(vec3 cameraDirection,
-                       vec3 position, vec3 normal,
-                       vec3 objColor,
-                       float illumination){
-    vec3 ambientColor = (objColor * 0.1) * (lightColor * 0.1);
-    vec3 lightDirection = normalize(lightOrigin - position);
-    float diffuseReflection = dot(normal, lightDirection);
-    vec3 diffuseColor = (objColor * 0.5) * (lightColor * 0.5) * max(diffuseReflection, 0);
-    vec3 halfwayVector = normalize(cameraDirection + lightDirection); 
-    float shininess = 1.;
-    float facing = diffuseReflection > 0 ?  1 : 0;
-    vec3 specularColor = facing * (objColor * 0.9) * (lightColor * 0.9) * pow(max(dot(normal, halfwayVector), 0.0), shininess);
-    return ambientColor + (diffuseColor + specularColor) * illumination;
-}
-
-/**
- * @brief Ray Marching algorithm for shadows.
- *
- * Starting at the hit point, advance the ray based on the direction of the light and value given by
- * the SDF, seeking to reach the maximum distance or hit a solid object to create a shadow.
- *
- * @param [in] originPoint Solid hit point.
- * @param [in] direction Ray direction towards the light origin.
- * @param [in] MAX_DIST Biggest distance between the solid hit point and the light origin.
- * @return Struct RayInfo containing the object hit information, distance of origin given a direction
- * and steps.
- */
-float rayMarchingShadow(vec3 originPoint, vec3 direction, float MAX_DIST){
-    float count = 0.0;
-    float t = 0.0;
-    ObjectHit objHit;
-    while(t < MAX_DIST) {
-        objHit = sdf(originPoint + direction * t);
-        float r = objHit.value;
-        if(r < e) return 0.;
-        if(count > MAX_STEP) 0.;
-        t += r;
-        count = count + 1;
-    }
-    return 1.;
-}
-
 /**
  * @brief Main function to execute the scene.
  *
@@ -469,24 +388,19 @@ float rayMarchingShadow(vec3 originPoint, vec3 direction, float MAX_DIST){
  */
 void main()
 {
-    //origin = vec3(3.0 *sin(iTimer), 0.0, 3.0 *cos(iTimer));
     vec2 uv = normalizeSpace();  
-    vec3 cameraDirection = getDirection(uv);  
-    RayInfo ri = rayMarching(cameraDirection);
+    vec3 direction = getDirection(uv);  
+    RayInfo ri = rayMarching(direction);
     
     vec3 color = vec3(0.0,0.0,0.0);
     
     if(ri.dist < D) {
-        vec3 position = origin + cameraDirection * ri.dist;
-        vec3 normal = getNormal(position, (ri.objHit).value);
+        vec3 position = origin + direction * ri.dist;
+       // vec3 normal = getNormal(position, (ri.objHit).value);
         vec3 objColor = (ri.objHit).color;
-        vec3 lightDirection = lightOrigin - position;
-        float MAX_DIST = length(lightDirection);
-        vec3 normalizedLightDirection = lightDirection / MAX_DIST;
-        float illumination = rayMarchingShadow(position + (normal * e), normalizedLightDirection, MAX_DIST);
-        color = phongIllumination(cameraDirection, position, normal, objColor, illumination);
-             
+        color = objColor;
+       // vec3 x = normal * (dot(normal, objColor));
+       // color =  (objColor + clamp(x, vec3(-1.,-1.,-1.), vec3(1.,1.,1.))) / 2.;       
     }
-
     fragColor = vec4(gammaCorrection(color),1.0);
 }

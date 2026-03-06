@@ -23,8 +23,8 @@
 
 #include "shape.hpp"
 
-#define CALCULATE_FPS 0 /**< Defines if the program will calculate FPS (1) or not (0)*/
-#define CALCULATE_SHADER_TIME 1 /**< Defines if the program will calculate shader time (1) or not (0)*/
+#define CALCULATE_FPS 1 /**< Defines if the program will calculate FPS (1) or not (0)*/
+#define CALCULATE_SHADER_TIME 0 /**< Defines if the program will calculate shader time (1) or not (0)*/
 #define USE_COMPUTE_SHADER 0 /**< Defines if the program gonna use compute shader (1) or not (0)*/
 
 int WINDOW_WIDTH = 800; /**< Global window width size. */
@@ -181,7 +181,7 @@ int main() {
     glViewport(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT);
 
     unsigned int vertexShader = createShader(GL_VERTEX_SHADER, "src/shaders/vertexshader.vert");
-    unsigned int fragmentShader = createShader(GL_FRAGMENT_SHADER, "src/shaders/normal/phong26Points.frag");
+    unsigned int fragmentShader = createShader(GL_FRAGMENT_SHADER, "src/shaders/prototypes/normal.frag");
     unsigned int shaderProgram = createShaderProgram(vertexShader, fragmentShader); 
 
     float vertices[] = {

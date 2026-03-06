@@ -314,7 +314,7 @@ ObjectHit sdf(vec3 p){
  * @param [in] pointValue SDF value at point p.
  * @return Normal vector at the point.
  */
-vec3 getNormal(in vec3 p, float pointValue) {	
+vec3 getNormal(in vec3 p) {	
 	vec3 normal;
     float hOffset = 0.0001;
 	vec2 h = vec2(hOffset, 0.0);

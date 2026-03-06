@@ -49,6 +49,12 @@ layout (location = 0) out vec4 fragColor;
 layout (location = 0) uniform vec2 iResolution;
 
 /**
+ * @ingroup FragVariables
+ * @brief Time information for rotate.
+*/
+layout (location = 1) uniform float iTimer;
+
+/**
  * @ingroup ObjVariables
  * @brief Object hit struct.
  */
@@ -168,7 +174,7 @@ vec2 calculateLinearPoint(vec2 origin, float m, float x){
  * @param [in] p Normalized 2D pixel position.
  * @return The correct value of SDF at the position.
  */
-float sdPlaneCutter(vec2 p){
+float sdPlane(vec2 p){
     vec2 offset = vec2(-0.82, 0.245);
     p = p - offset;
     float f = p.x + 0.09*sin(9.*p.y);
@@ -247,7 +253,7 @@ ObjectHit sdfUFABC(vec3 p){
 
     float boxCutter = sdOBox(p.xy, centerC, boxSlope,boxXCenterSideEnd, 0.02);
     float circleCutter = sdCircle(p.xy - centerC, insideRadius);
-    float planeCutter = sdPlaneCutter(p.xy);
+    float planeCutter = sdPlane(p.xy);
 
     float cutter = min(smoothMin(boxCutter, circleCutter, 0.060), planeCutter);
 
@@ -282,6 +288,8 @@ ObjectHit sdfFloor(vec3 p){
     ObjectHit objHit;
     objHit.color= vec3(1.,0.,0.);
     objHit.value = p.y + 1.0;
+    p += vec3(D * 2.0, 0.0, D * 2.0);
+    if((int(p.x) + int(p.z)) % 2 == 0) objHit.color = vec3(0.5,0.,0.);
     return objHit;
 }
 
@@ -308,14 +316,14 @@ ObjectHit sdf(vec3 p){
 /**
  * @brief Get implicit functions normal.
  *
- * Get normal of a given point in the world using a numerical differentiation (Forward Difference).
- * The small value of the method is applied in the three axes (x, y, z).
+ * Get normal of a given point in the world using a numerical differentiation (Central Difference) with
+ * 6 sample points. The small value of the method is applied in the three axes (x, y, z).
  *
  * @param [in] p Normalized 3D space position.
  * @param [in] pointValue SDF value at point p.
  * @return Normal vector at the point.
  */
-vec3 getNormal(in vec3 p, float pointValue) {	
+vec3 getNormal(in vec3 p) {	
 	vec3 normal;
     float hOffset = 0.0001;
 	vec2 h = vec2(hOffset, 0.0);
@@ -407,7 +415,7 @@ RayInfo rayMarching(vec3 direction){
  */
 vec3 phongIllumination(vec3 cameraDirection, RayInfo ri){
     vec3 position = origin + cameraDirection * ri.dist;
-    vec3 normal = getNormal(position, (ri.objHit).value);
+    vec3 normal = getNormal(position);
     vec3 objColor = (ri.objHit).color;
     vec3 ambientColor = (objColor * 0.1) * (lightColor * 0.1);
     vec3 lightDirection = normalize(lightOrigin - position);
@@ -428,11 +436,15 @@ vec3 phongIllumination(vec3 cameraDirection, RayInfo ri){
  */
 void main()
 {
+    //origin = vec3(3.0 *sin(iTimer), 0.0, 3.0 *cos(iTimer));
     vec2 uv = normalizeSpace();  
     vec3 cameraDirection = getDirection(uv);  
     RayInfo ri = rayMarching(cameraDirection);
     
-    vec3 color = vec3(0.0,0.0,0.0);
+    float p = 1 - (gl_FragCoord.y / iResolution.y);
+    vec3 color = vec3(0.4,0.4,1.0) + vec3(p) ;
+
+    //vec3 color = vec3(0.0,0.0,0.0);
     
     if(ri.dist < D) {
         color = phongIllumination(cameraDirection, ri);
