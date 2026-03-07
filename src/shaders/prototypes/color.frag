@@ -236,8 +236,6 @@ ObjectHit sdfUFABC(vec3 p){
     float cutter = min(smoothMin(boxCutter, circleCutter, 0.060), planeCutter);
 
     float yellowLines = max(box, -cutter);
-
-    //float final = min(greenArcs, yellowLines);
     
     ObjectHit objHit;
     if(yellowLines < greenArcs){
@@ -290,25 +288,6 @@ ObjectHit sdf(vec3 p){
     return objHitFloor;
 }
 
-/**
- * @brief Get implicit functions normal.
- *
- * Get normal of a given point in the world using a numerical differentiation (Forward Difference).
- * The small value of the method is applied in the three axes (x, y, z).
- *
- * @param [in] p Normalized 3D space position.
- * @param [in] pointValue SDF value at point p.
- * @return Normal vector at the point.
- */
-vec3 getNormal(in vec3 p, float pointValue) {	
-	vec3 normal;
-    float hOffset = 0.0001;
-	vec2 h = vec2(hOffset, 0.0);
-    normal.x = (sdf(p + h.xyy).value - pointValue) / hOffset;
-	normal.y = (sdf(p + h.yxy).value - pointValue) / hOffset;
-	normal.z = (sdf(p + h.yyx).value - pointValue) / hOffset;
-	return normalize(normal);
-}
 
 /**
  * @brief Apply gamma correction to a color.
@@ -388,19 +367,22 @@ RayInfo rayMarching(vec3 direction){
  */
 void main()
 {
+    float PI = 3.1415;
+    //origin = vec3(2.5 * sin(PI/4), 0.0, 2.5 * cos(PI/4));
+    //origin = vec3(2.5 * sin(11*PI/12), 0.0, 2.5 * cos(11*PI/12));
+    origin = vec3(2.5 * sin(20*PI/12), 0.0, 2.5 * cos(20*PI/12));
     vec2 uv = normalizeSpace();  
     vec3 direction = getDirection(uv);  
     RayInfo ri = rayMarching(direction);
     
-    vec3 color = vec3(0.0,0.0,0.0);
+    float p = 1 - (gl_FragCoord.y / iResolution.y);
+    vec3 color = vec3(0.4,0.4,1.0) + vec3(p);
     
     if(ri.dist < D) {
         vec3 position = origin + direction * ri.dist;
-       // vec3 normal = getNormal(position, (ri.objHit).value);
         vec3 objColor = (ri.objHit).color;
-        color = objColor;
-       // vec3 x = normal * (dot(normal, objColor));
-       // color =  (objColor + clamp(x, vec3(-1.,-1.,-1.), vec3(1.,1.,1.))) / 2.;       
+        color = objColor;     
     }
+    
     fragColor = vec4(gammaCorrection(color),1.0);
 }

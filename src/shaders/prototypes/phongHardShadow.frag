@@ -455,12 +455,12 @@ float rayMarchingShadow(vec3 originPoint, vec3 direction, float MAX_DIST){
     while(t < MAX_DIST) {
         objHit = sdf(originPoint + direction * t);
         float r = objHit.value;
-        if(r < e) return 0.;
-        if(count > MAX_STEP) 0.;
+        if(r < e) return 0.1;
+        if(count > MAX_STEP) 0.1;
         t += r;
         count = count + 1;
     }
-    return 1.;
+    return 1.0;
 }
 
 /**
@@ -472,6 +472,10 @@ float rayMarchingShadow(vec3 originPoint, vec3 direction, float MAX_DIST){
 void main()
 {
     //origin = vec3(3.0 *sin(iTimer), 0.0, 3.0 *cos(iTimer));
+    float PI = 3.1415;
+    //origin = vec3(2.5 * sin(PI/4), 0.0, 2.5 * cos(PI/4));
+    //origin = vec3(2.5 * sin(11*PI/12), 0.0, 2.5 * cos(11*PI/12));
+    origin = vec3(2.5 * sin(20*PI/12), 0.0, 2.5 * cos(20*PI/12));
     vec2 uv = normalizeSpace();  
     vec3 cameraDirection = getDirection(uv);  
     RayInfo ri = rayMarching(cameraDirection);
