@@ -181,7 +181,7 @@ int main() {
     glViewport(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT);
 
     unsigned int vertexShader = createShader(GL_VERTEX_SHADER, "src/shaders/vertexshader.vert");
-    unsigned int fragmentShader = createShader(GL_FRAGMENT_SHADER, "src/shaders/planeWithSin/d1Approximation.frag");
+    unsigned int fragmentShader = createShader(GL_FRAGMENT_SHADER, "src/shaders/UFABCFull3DTree.frag");
     unsigned int shaderProgram = createShaderProgram(vertexShader, fragmentShader); 
 
     float vertices[] = {
@@ -265,11 +265,11 @@ int main() {
 
 
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo[5]);
-    glBufferData(GL_SHADER_STORAGE_BUFFER, 4096 * 25 * sizeof(Node), nullptr, GL_DYNAMIC_DRAW);
+    glBufferData(GL_SHADER_STORAGE_BUFFER, 4 * 4 * 4 * 25 * sizeof(Node), nullptr, GL_DYNAMIC_DRAW);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, ssbo[5]);
 
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo[6]);
-    glBufferData(GL_SHADER_STORAGE_BUFFER, 64 * sizeof(CellInfo), nullptr, GL_DYNAMIC_DRAW);
+    glBufferData(GL_SHADER_STORAGE_BUFFER, 4 * 4 * 4 * sizeof(CellInfo), nullptr, GL_DYNAMIC_DRAW);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 6, ssbo[6]);
 
 
@@ -347,6 +347,52 @@ int main() {
 
 #endif
 
+
+
+
+
+    const int N = 25; 
+    
+    std::array<Primitive,13> primitives;
+    std::array<BinaryOperation,12> binaryOperations;
+    std::array<Node,25> nodes;
+    std::array<CellInfo,1> cells = {{{.offset = 0, .size = 25}}};
+
+    getPrimitivesPost(primitives);
+    getBinaryOperationsPost(binaryOperations);
+    getNodesPost(nodes);
+
+    GLuint ssbo[4];
+    glGenBuffers(4, ssbo);
+  
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo[0]);
+    glBufferData(GL_SHADER_STORAGE_BUFFER, 13 * sizeof(primitives.data()[0]), primitives.data(), GL_DYNAMIC_DRAW);
+
+
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo[1]);
+    glBufferData(GL_SHADER_STORAGE_BUFFER, 12 * sizeof(binaryOperations.data()[0]), binaryOperations.data(), GL_DYNAMIC_DRAW);
+
+
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo[2]);
+    glBufferData(GL_SHADER_STORAGE_BUFFER, 25 * sizeof(nodes.data()[0]), nodes.data(), GL_DYNAMIC_DRAW);
+
+
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo[3]);
+    glBufferData(GL_SHADER_STORAGE_BUFFER, 1 * sizeof(cells.data()[0]), cells.data(), GL_DYNAMIC_DRAW);
+
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, ssbo[0]);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, ssbo[1]);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, ssbo[2]);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, ssbo[3]);
+
+
+
+
+
+
+
+
+
     //Shader Time
     unsigned int queryID;
     glGenQueries(1, &queryID);
@@ -360,6 +406,8 @@ int main() {
     double FPSamples[SAMPLES];
 
     int samplesCount = 0;
+
+  
 
     while (!glfwWindowShouldClose(window)) {
         double currentTime = glfwGetTime();
@@ -377,6 +425,11 @@ int main() {
         //int iResolutionLocation = glGetUniformLocation(shaderProgram, "iResolution");
         glUniform2f(0, (float)WINDOW_WIDTH, (float)WINDOW_HEIGHT);
         glUniform1f(1, currentTime);
+
+
+
+
+
         glBindVertexArray(VAO);
         //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);

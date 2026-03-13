@@ -358,10 +358,10 @@ RayInfo rayMarching(vec3 direction){
 void main()
 {
     //origin = vec3(3.0 *sin(iTimer), 0.0, 3.0 *cos(iTimer));
-    float PI = 3.1415;
+    //float PI = 3.1415;
     //origin = vec3(2.5 * sin(PI/4), 0.0, 2.5 * cos(PI/4));
     //origin = vec3(2.5 * sin(11*PI/12), 0.0, 2.5 * cos(11*PI/12));
-    origin = vec3(2.5 * sin(20*PI/12), 0.0, 2.5 * cos(20*PI/12));
+    //origin = vec3(2.5 * sin(20*PI/12), 0.0, 2.5 * cos(20*PI/12));
     vec2 uv = normalizeSpace();  
     vec3 direction = getDirection(uv);  
     RayInfo ri = rayMarching(direction);

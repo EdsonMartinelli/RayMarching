@@ -108,7 +108,6 @@ const int NODES_MAX = 25;
 float e = 0.0001;
 
 float smoothFunction( float a, float b, float k ){
-    
     if(k == 0) return 0;
     float d = abs(a - b);
     float h = max(k - d, 0.0);
