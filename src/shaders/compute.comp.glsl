@@ -209,8 +209,8 @@ void main() {
         if (node.type == NODETYPE_BINARY) {
 
             BinaryOperation binaryOperation = binaryOperations.data[node.index];
-            float leftValue = stack[stackIndex - 1].value;
-            float rightValue = stack[stackIndex - 2].value;
+            float leftValue = stack[stackIndex - 2].value;
+            float rightValue = stack[stackIndex - 1].value;
 
             float k = binaryOperation.k;
             int s = binaryOperation.s;

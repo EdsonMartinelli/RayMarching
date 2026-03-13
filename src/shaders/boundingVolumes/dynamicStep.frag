@@ -226,20 +226,6 @@ float sdCircle(vec2 p, float r){
 
 ObjectHit sdfUFABC(vec3 p){
     ObjectHit objHit;
-
-    float t = length(p) - 1.5;
-    // if(t >= 0.1){
-    //     objHit.color = vec3(0.,0.,1.0);
-    //     objHit.value = t;
-    //     return objHit;
-    // } 
-
-    if(t >= 1.0){
-        objHit.color = vec3(0.,0.,1.0);
-        objHit.value = 1.0;
-        return objHit;
-    } 
-
     float insideRadius = 0.42;
     float outsideRadius = 0.5;
     float halfDistanceCenterX = outsideRadius - ((outsideRadius - insideRadius) / 2.0);
@@ -283,6 +269,27 @@ ObjectHit sdfUFABC(vec3 p){
     objHit.color = trueColor / 255.;
     objHit.value = opExtrusion(p, greenArcs, 0.5);
     return objHit;
+}
+
+/**
+ * @brief Bounding Volume with Dynamic Step.
+ *
+ * Bounding Volume with Dynamic Step for UFABC SBDF.
+ *
+ * @param [in] p Normalized 3D space position.
+ * @return The struct ObjectHit with the object color and the correct value of SDBF at the position.
+ */
+
+ObjectHit boundingDynamicUFABC(vec3 p){
+    ObjectHit objHit;
+    float t = length(p) - 1.5;
+    if(t >= 0.1){
+        objHit.color = vec3(0.,0.,1.0);
+        objHit.value = t;
+        return objHit;
+    } 
+
+    return sdfUFABC(p);
 }
 
 /**
@@ -343,7 +350,7 @@ ObjectHit sdf(vec3 p){
 // 	normal.z = (sdf(p + h.yyx).value - pointValue) / hOffset;
 // 	return normalize(normal);
 // }
-vec3 getNormal(in vec3 p, float pointValue) {	
+vec3 getNormal(in vec3 p) {	
 	vec3 normal;
     float hOffset = 0.0001;
 	vec2 h = vec2(hOffset, 0.0);
@@ -492,11 +499,12 @@ void main()
     vec3 cameraDirection = getDirection(uv);  
     RayInfo ri = rayMarching(cameraDirection);
     
-    vec3 color = vec3(0.0,0.0,0.0);
+    float p = 1 - (gl_FragCoord.y / iResolution.y);
+    vec3 color = vec3(0.4,0.4,1.0) + vec3(p);
     
     if(ri.dist < D) {
         vec3 position = origin + cameraDirection * ri.dist;
-        vec3 normal = getNormal(position, (ri.objHit).value);
+        vec3 normal = getNormal(position);
         vec3 objColor = (ri.objHit).color;
         vec3 lightDirection = lightOrigin - position;
         float MAX_DIST = length(lightDirection);

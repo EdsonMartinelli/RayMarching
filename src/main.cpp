@@ -181,7 +181,7 @@ int main() {
     glViewport(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT);
 
     unsigned int vertexShader = createShader(GL_VERTEX_SHADER, "src/shaders/vertexshader.vert");
-    unsigned int fragmentShader = createShader(GL_FRAGMENT_SHADER, "src/shaders/UFABCFull3DTree.frag");
+    unsigned int fragmentShader = createShader(GL_FRAGMENT_SHADER, "src/shaders/boundingVolumes/fixedStep.frag");
     unsigned int shaderProgram = createShaderProgram(vertexShader, fragmentShader); 
 
     float vertices[] = {
@@ -350,7 +350,7 @@ int main() {
 
 
 
-
+#if 0
     const int N = 25; 
     
     std::array<Primitive,13> primitives;
@@ -386,7 +386,7 @@ int main() {
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, ssbo[3]);
 
 
-
+#endif
 
 
 
