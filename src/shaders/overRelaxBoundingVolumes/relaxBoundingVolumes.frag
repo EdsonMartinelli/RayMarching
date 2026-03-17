@@ -254,6 +254,8 @@ ObjectHit sdfUFABC(vec3 p){
     float cutter = min(smoothMin(boxCutter, circleCutter, 0.060), planeCutter);
 
     float yellowLines = max(box, -cutter);
+
+    //float final = min(greenArcs, yellowLines);
     
     
     if(yellowLines < greenArcs){
@@ -267,6 +269,27 @@ ObjectHit sdfUFABC(vec3 p){
     objHit.color = trueColor / 255.;
     objHit.value = opExtrusion(p, greenArcs, 0.5);
     return objHit;
+}
+
+/**
+ * @brief Bounding Volume with Dynamic Step.
+ *
+ * Bounding Volume with Dynamic Step for UFABC SBDF.
+ *
+ * @param [in] p Normalized 3D space position.
+ * @return The struct ObjectHit with the object color and the correct value of SDBF at the position.
+ */
+
+ObjectHit boundingDynamicUFABC(vec3 p){
+    ObjectHit objHit;
+    float t = length(p) - 1.5;
+    if(t >= 0.1){
+        objHit.color = vec3(0.,0.,1.0);
+        objHit.value = t;
+        return objHit;
+    } 
+
+    return sdfUFABC(p);
 }
 
 /**
@@ -297,7 +320,7 @@ ObjectHit sdfFloor(vec3 p){
  */
 ObjectHit sdf(vec3 p){
     ObjectHit min;
-    ObjectHit objHitUFABC = sdfUFABC(p);
+    ObjectHit objHitUFABC = boundingDynamicUFABC(p);
     ObjectHit objHitFloor = sdfFloor(p);
 
     min = objHitFloor;
@@ -314,8 +337,18 @@ ObjectHit sdf(vec3 p){
  * The small value of the method is applied in the three axes (x, y, z).
  *
  * @param [in] p Normalized 3D space position.
+ * @param [in] pointValue SDF value at point p.
  * @return Normal vector at the point.
  */
+// vec3 getNormal(in vec3 p, float pointValue) {	
+// 	vec3 normal;
+//     float hOffset = 0.0001;
+// 	vec2 h = vec2(hOffset, 0.0);
+//     normal.x = (sdf(p + h.xyy).value - pointValue) / hOffset;
+// 	normal.y = (sdf(p + h.yxy).value - pointValue) / hOffset;
+// 	normal.z = (sdf(p + h.yyx).value - pointValue) / hOffset;
+// 	return normalize(normal);
+// }
 vec3 getNormal(in vec3 p) {	
 	vec3 normal;
     float hOffset = 0.0001;
@@ -369,21 +402,20 @@ vec3 getDirection(vec2 uv){
     return normalize(viewportPoint + viewDir);  
 }
 
-
 /**
- * @brief Ray Marching Algorithm wih Over-Relaxation.
+ * @brief Ray Marching Algorithm.
  *
- * Starting at the origin, advance the ray based on the direction and value given by the SDF wih 
- * over-relaxation contidion, seeking to find solid hit or reach the maximum distance.
+ * Starting at the origin, advance the ray based on the direction and value given by the SDF, seeking
+ * to find solid hit or reach the maximum distance.
  *
  * @param [in] direction Ray direction.
  * @return Struct RayInfo containing the object hit information, distance of origin given a direction
  * and steps.
  */
-RayInfo relaxationRayMarching(vec3 direction){
+RayInfo rayMarching(vec3 direction){
     float count = 0.0;
     float t = 0.0;
-    float omega = 1.6;
+    float omega = 1.3;
     float previousR = 0.0;
     float stepSize = 0.0;
     ObjectHit objHit;
@@ -393,8 +425,8 @@ RayInfo relaxationRayMarching(vec3 direction){
         if( r < e && r >= 0.0) break;
         if(count > MAX_STEP) break;
 
-        if(omega > 1.0 && abs(previousR) + abs(r) < stepSize){
-            stepSize -= omega * stepSize;
+        if(omega > 1.0 && (abs(previousR) + abs(r) < stepSize || r < 0.0)){
+            stepSize = -stepSize + previousR;
             omega = 1.0;
         } else {           
             stepSize = r * omega;
@@ -475,7 +507,7 @@ void main()
     //origin = vec3(4.0 *sin(iTimer), 0.0, 4.0 *cos(iTimer));
     vec2 uv = normalizeSpace();  
     vec3 cameraDirection = getDirection(uv);  
-    RayInfo ri = relaxationRayMarching(cameraDirection);
+    RayInfo ri = rayMarching(cameraDirection);
     
     float p = 1 - (gl_FragCoord.y / iResolution.y);
     vec3 color = vec3(0.4,0.4,1.0) + vec3(p);

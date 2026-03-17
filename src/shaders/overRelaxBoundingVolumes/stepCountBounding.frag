@@ -111,7 +111,7 @@ float e = 0.0001;
  * @ingroup RayVariables
  * @brief Maximun ray steps.
 */
-float MAX_STEP = 256.0;
+float MAX_STEP = 32.0;
 
 /**
  * @brief Smooth minimum function.
@@ -226,20 +226,6 @@ float sdCircle(vec2 p, float r){
 
 ObjectHit sdfUFABC(vec3 p){
     ObjectHit objHit;
-
-    float t = length(p) - 1.5;
-    if(t >= 0.1){
-        objHit.color = vec3(0.,0.,1.0);
-        objHit.value = t;
-        return objHit;
-    } 
-
-    // if(t >= 1.0){
-    //     objHit.color = vec3(0.,0.,1.0);
-    //     objHit.value = 1.0;
-    //     return objHit;
-    // } 
-
     float insideRadius = 0.42;
     float outsideRadius = 0.5;
     float halfDistanceCenterX = outsideRadius - ((outsideRadius - insideRadius) / 2.0);
@@ -286,6 +272,27 @@ ObjectHit sdfUFABC(vec3 p){
 }
 
 /**
+ * @brief Bounding Volume with Dynamic Step.
+ *
+ * Bounding Volume with Dynamic Step for UFABC SBDF.
+ *
+ * @param [in] p Normalized 3D space position.
+ * @return The struct ObjectHit with the object color and the correct value of SDBF at the position.
+ */
+
+ObjectHit boundingDynamicUFABC(vec3 p){
+    ObjectHit objHit;
+    float t = length(p) - 1.5;
+    if(t >= 0.1){
+        objHit.color = vec3(0.,0.,1.0);
+        objHit.value = t;
+        return objHit;
+    } 
+
+    return sdfUFABC(p);
+}
+
+/**
  * @brief Plane SDF.
  *
  * A simples SDF function that divide the entire world in two parts: positive, if 
@@ -313,7 +320,7 @@ ObjectHit sdfFloor(vec3 p){
  */
 ObjectHit sdf(vec3 p){
     ObjectHit min;
-    ObjectHit objHitUFABC = sdfUFABC(p);
+    ObjectHit objHitUFABC = boundingDynamicUFABC(p);
     ObjectHit objHitFloor = sdfFloor(p);
 
     min = objHitFloor;
@@ -342,7 +349,7 @@ ObjectHit sdf(vec3 p){
 // 	normal.z = (sdf(p + h.yyx).value - pointValue) / hOffset;
 // 	return normalize(normal);
 // }
-vec3 getNormal(in vec3 p, float pointValue) {	
+vec3 getNormal(in vec3 p) {	
 	vec3 normal;
     float hOffset = 0.0001;
 	vec2 h = vec2(hOffset, 0.0);
@@ -405,29 +412,17 @@ vec3 getDirection(vec2 uv){
  * @return Struct RayInfo containing the object hit information, distance of origin given a direction
  * and steps.
  */
-RayInfo relaxationRayMarching(vec3 direction){
+RayInfo rayMarching(vec3 direction){
     float count = 0.0;
     float t = 0.0;
-    float omega = 1.1;
-    float previousR = 0.0;
-    float stepSize = 0.0;
     ObjectHit objHit;
     while(t < D) {
         objHit = sdf(origin + direction * t);
         float r = objHit.value;
-        if(abs(r) < e) break;
+        if(r < e) break;
         if(count > MAX_STEP) break;
-
-        if(omega > 1 && abs(previousR) + abs(r) <= stepSize){
-            stepSize = -stepSize;
-            omega = 1.0;
-        } else {           
-            stepSize = r * omega;
-
-        }   
-        previousR = r;
-        t += stepSize;
-        count = count + 1; 
+        t += r;
+        count = count + 1;
     }
     RayInfo ri;
     ri.objHit = objHit;
@@ -435,6 +430,7 @@ RayInfo relaxationRayMarching(vec3 direction){
     ri.count = count;
     return ri;
 }
+
 /**
  * @brief Blinn-Phong illumination model.
  *
@@ -481,12 +477,33 @@ float rayMarchingShadow(vec3 originPoint, vec3 direction, float MAX_DIST){
     while(t < MAX_DIST) {
         objHit = sdf(originPoint + direction * t);
         float r = abs(objHit.value);
-        if(r < e) return 0.;
-        if(count > MAX_STEP) return 0.;
+        if(r < e) return 0.1;
+        if(count > MAX_STEP) return 0.1;
         t += r;
         count = count + 1;
     }
     return 1.;
+}
+
+/**
+ * @brief Viridis ColorMap Polynomial Approximation.
+ *
+ * Viridis colormap approximated with polynomial equation to color step count.
+ *
+ * @param [in] steps Number of ray steps.
+ * @return Scale color referente to the steps.
+ */
+vec3 viridisApproximation(float steps) {
+    steps = clamp(steps, 0.0, 1.0);
+    const vec3 c0 = vec3(0.2777273272234177, 0.005407344544966578, 0.3340998053353061);
+    const vec3 c1 = vec3(0.1050930431085774, 1.404613529898575, 1.384590162594685);
+    const vec3 c2 = vec3(-0.3308618287255563, 0.214847559468213, 0.09509516302823659);
+    const vec3 c3 = vec3(-4.634230498983486, -5.799100973351585, -19.33244095627987);
+    const vec3 c4 = vec3(6.228269936347081, 14.17993336680509, 56.69055260068105);
+    const vec3 c5 = vec3(4.776384997670288, -13.74514537774601, -65.35303263337234);
+    const vec3 c6 = vec3(-5.435455855934631, 4.645852612178535, 26.3124352495832);
+
+    return c0+steps*(c1+steps*(c2+steps*(c3+steps*(c4+steps*(c5+steps*c6)))));
 }
 
 /**
@@ -500,21 +517,27 @@ void main()
     //origin = vec3(4.0 *sin(iTimer), 0.0, 4.0 *cos(iTimer));
     vec2 uv = normalizeSpace();  
     vec3 cameraDirection = getDirection(uv);  
-    RayInfo ri = relaxationRayMarching(cameraDirection);
-    
+    RayInfo ri = rayMarching(cameraDirection);
+
+
     vec3 color = vec3(0.0,0.0,0.0);
+    float steps = ri.count;
+    color = viridisApproximation(steps/MAX_STEP);
     
-    if(ri.dist < D) {
-        vec3 position = origin + cameraDirection * ri.dist;
-        vec3 normal = getNormal(position, (ri.objHit).value);
-        vec3 objColor = (ri.objHit).color;
-        vec3 lightDirection = lightOrigin - position;
-        float MAX_DIST = length(lightDirection);
-        vec3 normalizedLightDirection = lightDirection / MAX_DIST;
-        float illumination = rayMarchingShadow(position + (normal * e), normalizedLightDirection, MAX_DIST);
-        color = phongIllumination(cameraDirection, position, normal, objColor, illumination);
+    // float p = 1 - (gl_FragCoord.y / iResolution.y);
+    // vec3 color = vec3(0.4,0.4,1.0) + vec3(p);
+    
+    // if(ri.dist < D) {
+    //     vec3 position = origin + cameraDirection * ri.dist;
+    //     vec3 normal = getNormal(position);
+    //     vec3 objColor = (ri.objHit).color;
+    //     vec3 lightDirection = lightOrigin - position;
+    //     float MAX_DIST = length(lightDirection);
+    //     vec3 normalizedLightDirection = lightDirection / MAX_DIST;
+    //     float illumination = rayMarchingShadow(position + (normal * e), normalizedLightDirection, MAX_DIST);
+    //     color = phongIllumination(cameraDirection, position, normal, objColor, illumination);
              
-    }
+    // }
 
     fragColor = vec4(gammaCorrection(color),1.0);
 }
