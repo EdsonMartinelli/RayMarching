@@ -304,10 +304,9 @@ ObjectHit boundingDynamicUFABC(vec3 p){
 ObjectHit sdfFloor(vec3 p){
     ObjectHit objHit;
     objHit.color= vec3(1.,0.,0.);
-    if(p.x < 0) p.x -=1;
-    if(p.z < 0) p.z -=1;
-    if((int(p.x) + int(p.z)) % 2 == 0) objHit.color = vec3(0.5,0.,0.);
     objHit.value = p.y + 1.0;
+    p += vec3(D * 2.0, 0.0, D * 2.0);
+    if((int(p.x) + int(p.z)) % 2 == 0) objHit.color = vec3(0.5,0.,0.);
     return objHit;
 }
 
@@ -321,7 +320,7 @@ ObjectHit sdfFloor(vec3 p){
  */
 ObjectHit sdf(vec3 p){
     ObjectHit min;
-    ObjectHit objHitUFABC = sdfUFABC(p);
+    ObjectHit objHitUFABC = boundingDynamicUFABC(p);
     ObjectHit objHitFloor = sdfFloor(p);
 
     min = objHitFloor;
@@ -478,8 +477,8 @@ float rayMarchingShadow(vec3 originPoint, vec3 direction, float MAX_DIST){
     while(t < MAX_DIST) {
         objHit = sdf(originPoint + direction * t);
         float r = abs(objHit.value);
-        if(r < e) return 0.;
-        if(count > MAX_STEP) return 0.;
+        if(r < e) return 0.1;
+        if(count > MAX_STEP) return 0.1;
         t += r;
         count = count + 1;
     }

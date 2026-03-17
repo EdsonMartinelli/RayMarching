@@ -30,7 +30,7 @@
 int WINDOW_WIDTH = 800; /**< Global window width size. */
 int WINDOW_HEIGHT = 600; /**< Global window height size. */
 
-int SAMPLES = 10;/**< Number of samples for avarage FPS and Shader Time calculte.*/
+int SAMPLES = 5;/**< Number of samples for avarage FPS and Shader Time calculte.*/
 double ONE_MINUTE = 60.0; /** Time of each sample. */
 
 /**
@@ -181,7 +181,7 @@ int main() {
     glViewport(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT);
 
     unsigned int vertexShader = createShader(GL_VERTEX_SHADER, "src/shaders/vertexshader.vert");
-    unsigned int fragmentShader = createShader(GL_FRAGMENT_SHADER, "src/shaders/boundingVolumes/fixedStep.frag");
+    unsigned int fragmentShader = createShader(GL_FRAGMENT_SHADER, "src/shaders/overRelaxation/optimizedFallback.frag");
     unsigned int shaderProgram = createShaderProgram(vertexShader, fragmentShader); 
 
     float vertices[] = {

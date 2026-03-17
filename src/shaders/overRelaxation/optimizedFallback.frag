@@ -170,7 +170,7 @@ vec2 calculateLinearPoint(vec2 origin, float m, float x){
  * @param [in] p Normalized 2D pixel position.
  * @return The correct value of SDF at the position.
  */
-float sdPlaneCutter(vec2 p){
+float sdPlane(vec2 p){
     vec2 offset = vec2(-0.82, 0.245);
     p = p - offset;
     float f = p.x + 0.09*sin(9.*p.y);
@@ -249,13 +249,11 @@ ObjectHit sdfUFABC(vec3 p){
 
     float boxCutter = sdOBox(p.xy, centerC, boxSlope,boxXCenterSideEnd, 0.02);
     float circleCutter = sdCircle(p.xy - centerC, insideRadius);
-    float planeCutter = sdPlaneCutter(p.xy);
+    float planeCutter = sdPlane(p.xy);
 
     float cutter = min(smoothMin(boxCutter, circleCutter, 0.060), planeCutter);
 
     float yellowLines = max(box, -cutter);
-
-    //float final = min(greenArcs, yellowLines);
     
     
     if(yellowLines < greenArcs){
@@ -269,28 +267,6 @@ ObjectHit sdfUFABC(vec3 p){
     objHit.color = trueColor / 255.;
     objHit.value = opExtrusion(p, greenArcs, 0.5);
     return objHit;
-}
-
-
-/**
- * @brief Bounding Volume with Fixed Step.
- *
- * Bounding Volume with Fixed Step for UFABC SBDF.
- *
- * @param [in] p Normalized 3D space position.
- * @return The struct ObjectHit with the object color and the correct value of SDBF at the position.
- */
-ObjectHit boundingFixedUFABC(vec3 p){
-    float n = 3.5;
-    ObjectHit objHit;
-    float t = length(p) - 1.5;
-    if(t >= n){
-        objHit.color = vec3(0.,0.,1.0);
-        objHit.value = n;
-        return objHit;
-    } 
-
-    return sdfUFABC(p);
 }
 
 /**
@@ -321,7 +297,7 @@ ObjectHit sdfFloor(vec3 p){
  */
 ObjectHit sdf(vec3 p){
     ObjectHit min;
-    ObjectHit objHitUFABC = boundingFixedUFABC(p);
+    ObjectHit objHitUFABC = sdfUFABC(p);
     ObjectHit objHitFloor = sdfFloor(p);
 
     min = objHitFloor;
@@ -338,18 +314,8 @@ ObjectHit sdf(vec3 p){
  * The small value of the method is applied in the three axes (x, y, z).
  *
  * @param [in] p Normalized 3D space position.
- * @param [in] pointValue SDF value at point p.
  * @return Normal vector at the point.
  */
-// vec3 getNormal(in vec3 p, float pointValue) {	
-// 	vec3 normal;
-//     float hOffset = 0.0001;
-// 	vec2 h = vec2(hOffset, 0.0);
-//     normal.x = (sdf(p + h.xyy).value - pointValue) / hOffset;
-// 	normal.y = (sdf(p + h.yxy).value - pointValue) / hOffset;
-// 	normal.z = (sdf(p + h.yyx).value - pointValue) / hOffset;
-// 	return normalize(normal);
-// }
 vec3 getNormal(in vec3 p) {	
 	vec3 normal;
     float hOffset = 0.0001;
@@ -403,27 +369,39 @@ vec3 getDirection(vec2 uv){
     return normalize(viewportPoint + viewDir);  
 }
 
+
 /**
- * @brief Ray Marching Algorithm.
+ * @brief Ray Marching Algorithm wih Over-Relaxation.
  *
- * Starting at the origin, advance the ray based on the direction and value given by the SDF, seeking
- * to find solid hit or reach the maximum distance.
+ * Starting at the origin, advance the ray based on the direction and value given by the SDF wih 
+ * over-relaxation contidion, seeking to find solid hit or reach the maximum distance.
  *
  * @param [in] direction Ray direction.
  * @return Struct RayInfo containing the object hit information, distance of origin given a direction
  * and steps.
  */
-RayInfo rayMarching(vec3 direction){
+RayInfo relaxationRayMarching(vec3 direction){
     float count = 0.0;
     float t = 0.0;
+    float omega = 1.6;
+    float previousR = 0.0;
+    float stepSize = 0.0;
     ObjectHit objHit;
     while(t < D) {
         objHit = sdf(origin + direction * t);
         float r = objHit.value;
-        if(r < e) break;
+        if( r < e && r >= 0.0) break;
         if(count > MAX_STEP) break;
-        t += r;
-        count = count + 1;
+
+        if(omega > 1.0 && (abs(previousR) + abs(r) < stepSize || r < 0)){
+            stepSize = -stepSize + previousR;
+            omega = 1.0;
+        } else {           
+            stepSize = r * omega;
+        }   
+        previousR = r;
+        t += stepSize;
+        count = count + 1; 
     }
     RayInfo ri;
     ri.objHit = objHit;
@@ -497,10 +475,10 @@ void main()
     //origin = vec3(4.0 *sin(iTimer), 0.0, 4.0 *cos(iTimer));
     vec2 uv = normalizeSpace();  
     vec3 cameraDirection = getDirection(uv);  
-    RayInfo ri = rayMarching(cameraDirection);
+    RayInfo ri = relaxationRayMarching(cameraDirection);
     
     float p = 1 - (gl_FragCoord.y / iResolution.y);
-    vec3 color = vec3(0.4,0.4,1.0) + vec3(p);
+    vec3 color = vec3(0.4,0.4,1.0) + vec3(p) ;
     
     if(ri.dist < D) {
         vec3 position = origin + cameraDirection * ri.dist;
