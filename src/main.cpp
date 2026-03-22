@@ -25,7 +25,7 @@
 
 #define CALCULATE_FPS 1 /**< Defines if the program will calculate FPS (1) or not (0)*/
 #define CALCULATE_SHADER_TIME 0 /**< Defines if the program will calculate shader time (1) or not (0)*/
-#define USE_COMPUTE_SHADER 0 /**< Defines if the program gonna use compute shader (1) or not (0)*/
+#define USE_COMPUTE_SHADER 1 /**< Defines if the program gonna use compute shader (1) or not (0)*/
 
 int WINDOW_WIDTH = 800; /**< Global window width size. */
 int WINDOW_HEIGHT = 600; /**< Global window height size. */
@@ -181,7 +181,7 @@ int main() {
     glViewport(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT);
 
     unsigned int vertexShader = createShader(GL_VERTEX_SHADER, "src/shaders/vertexshader.vert");
-    unsigned int fragmentShader = createShader(GL_FRAGMENT_SHADER, "src/shaders/overRelaxBoundingVolumes/stepCountRelaxBounding.frag");
+    unsigned int fragmentShader = createShader(GL_FRAGMENT_SHADER, "src/shaders/lipschitzPruning/UFABCFull3DPruning.frag");
     unsigned int shaderProgram = createShaderProgram(vertexShader, fragmentShader); 
 
     float vertices[] = {
@@ -229,17 +229,24 @@ int main() {
     std::array<Node,25> nodes;
     std::array<CellInfo,1> cells = {{{.offset = 0, .size = 25}}};
 
-    getPrimitives(primitives);
-    getBinaryOperations(binaryOperations);
-    getNodes(nodes);
+    getPrimitivesPost2(primitives);
+    getBinaryOperationsPost2(binaryOperations);
+    getNodesPost2(nodes);
 
-    std::cout << primitives.at(1).offsetX << std::endl;
+    vec4 max = {.x = 2.0f, .y = 2.0f, .z = 2.0f, .w = 0.0f};
+    vec4 min = {.x = -2.0f, .y = -2.0f, .z = -2.0f, .w = 0.0f};
 
-    GLuint ssbo[7];
-    glGenBuffers(7, ssbo);
+    GLuint ssbo[6];
+    glGenBuffers(6, ssbo);
 
     GLuint nodesCount;
     glGenBuffers(1, &nodesCount);
+
+    GLuint aabbMax;
+    glGenBuffers(1, &aabbMax);
+
+    GLuint aabbMin;
+    glGenBuffers(1, &aabbMin);
   
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo[0]);
     glBufferData(GL_SHADER_STORAGE_BUFFER, 13 * sizeof(primitives.data()[0]), primitives.data(), GL_DYNAMIC_DRAW);
@@ -257,27 +264,25 @@ int main() {
     glBufferData(GL_SHADER_STORAGE_BUFFER, 1 * sizeof(cells.data()[0]), cells.data(), GL_DYNAMIC_DRAW);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, ssbo[3]);
 
-
-
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo[4]);
-    glBufferData(GL_SHADER_STORAGE_BUFFER, sizeInBytes, state.data(), GL_DYNAMIC_DRAW);
+    glBufferData(GL_SHADER_STORAGE_BUFFER, 4 * 4 * 4 * 25 * sizeof(Node), nullptr, GL_DYNAMIC_DRAW);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, ssbo[4]);
 
-
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo[5]);
-    glBufferData(GL_SHADER_STORAGE_BUFFER, 4 * 4 * 4 * 25 * sizeof(Node), nullptr, GL_DYNAMIC_DRAW);
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, ssbo[5]);
-
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo[6]);
     glBufferData(GL_SHADER_STORAGE_BUFFER, 4 * 4 * 4 * sizeof(CellInfo), nullptr, GL_DYNAMIC_DRAW);
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 6, ssbo[6]);
-
-
-
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, ssbo[5]);
 
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, nodesCount);
     glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(GLuint), 0, GL_DYNAMIC_COPY);
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 7, nodesCount);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 6, nodesCount);
+
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, aabbMax);
+    glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(vec4), &max, GL_DYNAMIC_COPY);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 7,  aabbMax);
+
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, aabbMin);
+    glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(vec4), &min, GL_DYNAMIC_COPY);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 8,  aabbMin);
 
 
 
@@ -301,49 +306,45 @@ int main() {
 
     printf("Total Node Count: %u\n", finalNodesCount);
 
-    std::vector<float> final_data(N);
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo[4]);
-    glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, sizeInBytes, final_data.data());
+    // std::cout << "NODES:"<< std::endl;
 
-    int count = 0;
-    for (const auto& element : final_data) {
-        std::cout << count << ": " << element << std::endl;
-        count++;
-    }
-
-    std::cout << "NODES:"<< std::endl;
-
-    std::vector<Node> final_nodes(finalNodesCount);
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo[5]);
-    glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, finalNodesCount * sizeof(Node), final_nodes.data());
+    // std::vector<Node> final_nodes(finalNodesCount);
+    // glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo[4]);
+    // glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, finalNodesCount * sizeof(Node), final_nodes.data());
 
 
-    count = 0;
-    for (const auto& element : final_nodes) {
-        std::cout << count << " - ";
-        std::cout << " Index: " << element.index << " ;";
-        std::cout << " Type: " << element.type << " ;";
-        std::cout << " Sign: " << element.sign << " ;";
-        std::cout <<  " Parent: " << element.parent << std::endl;
-        count++;
-    }
+     int count = 0;
+    // for (const auto& element : final_nodes) {
+    //     std::cout << count << " - ";
+    //     std::cout << " Index: " << element.index << " ;";
+    //     std::cout << " Type: " << element.type << " ;";
+    //     std::cout << " Sign: " << element.sign << " ;";
+    //     std::cout <<  " Parent: " << element.parent << std::endl;
+    //     count++;
+    // }
 
-     std::cout << "CELL INFO:"<< std::endl;
+    //  std::cout << "CELL INFO:"<< std::endl;
 
     
-    int numCell = x*y*z*2;
+    // int numCell = x*y*z*4*4*4;
 
-    std::vector<CellInfo> final_cellInfo(numCell);
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo[6]);
-    glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, (numCell) * sizeof(CellInfo), final_cellInfo.data());
+    // std::vector<CellInfo> final_cellInfo(numCell);
+    // glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo[5]);
+    // glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, (numCell) * sizeof(CellInfo), final_cellInfo.data());
 
-    count = 0;
-    for (const auto& element : final_cellInfo) {
-        std::cout << count << " - ";
-        std::cout << " Offset: " << element.offset << " ;";
-        std::cout << " Size: " << element.size << std::endl;
-        count++;
-    }
+    // count = 0;
+    // for (const auto& element : final_cellInfo) {
+    //     std::cout << count << " - ";
+    //     std::cout << " Offset: " << element.offset << " ;";
+    //     std::cout << " Size: " << element.size << std::endl;
+    //     count++;
+    // }
+
+
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, ssbo[0]);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, ssbo[1]);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, ssbo[4]);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, ssbo[5]);
 
 #endif
 
@@ -358,9 +359,9 @@ int main() {
     std::array<Node,25> nodes;
     std::array<CellInfo,1> cells = {{{.offset = 0, .size = 25}}};
 
-    getPrimitivesPost(primitives);
-    getBinaryOperationsPost(binaryOperations);
-    getNodesPost(nodes);
+    getPrimitivesPost2(primitives);
+    getBinaryOperationsPost2(binaryOperations);
+    getNodesPost2(nodes);
 
     GLuint ssbo[4];
     glGenBuffers(4, ssbo);
@@ -368,14 +369,11 @@ int main() {
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo[0]);
     glBufferData(GL_SHADER_STORAGE_BUFFER, 13 * sizeof(primitives.data()[0]), primitives.data(), GL_DYNAMIC_DRAW);
 
-
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo[1]);
     glBufferData(GL_SHADER_STORAGE_BUFFER, 12 * sizeof(binaryOperations.data()[0]), binaryOperations.data(), GL_DYNAMIC_DRAW);
 
-
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo[2]);
     glBufferData(GL_SHADER_STORAGE_BUFFER, 25 * sizeof(nodes.data()[0]), nodes.data(), GL_DYNAMIC_DRAW);
-
 
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo[3]);
     glBufferData(GL_SHADER_STORAGE_BUFFER, 1 * sizeof(cells.data()[0]), cells.data(), GL_DYNAMIC_DRAW);

@@ -50,7 +50,8 @@ layout (location = 0) uniform vec2 iResolution;
 
 layout (location = 1) uniform float iTimer;
 
-
+vec4 aabbMax = vec4(2.0, 2.0, 2.0, 0.0);
+vec4 aabbMin = vec4(-2.0, -2.0, -2.0, 0.0);
 
 
 
@@ -107,8 +108,8 @@ struct Node{
 };
 
 struct CellInfo{
-    uint offset;
-    uint size;
+    int offset;
+    int size;
 };
 
 
@@ -137,7 +138,7 @@ layout(std430, binding = 2) readonly restrict buffer NodesBuffer {
 } nodes;
 
 layout(std430, binding = 3) readonly restrict buffer CellInfoBuffer {
-    int data[];
+    CellInfo data[];
 } cellInfo;
 
 
@@ -181,7 +182,7 @@ struct RayInfo{
  * @ingroup CameraVariables
  * @brief Rays origin.
 */
-vec3 origin = vec3(1.0, 0.0, 2.0);
+vec3 origin = vec3(1.0, 0.0, 1.999);
 /**
  * @ingroup CameraVariables
  * @brief Rays target position.
@@ -220,6 +221,11 @@ float e = 0.0001;
  * @brief Maximun ray steps.
 */
 float MAX_STEP = 256.0;
+
+
+uint getCellIndex(ivec3 globalID, uint size){
+    return (globalID.z * size * size) + (globalID.y * size) + globalID.x;
+}
 
 
 float smoothFunction( float a, float b, float k ){
@@ -369,11 +375,11 @@ float evalPrimitive(vec3 p, Primitive pr){
  * @param [in] p Normalized 3D space position.
  * @return The struct ObjectHit with the object color and the correct value of SDF at the position.
  */
-float sdf(vec3 p){
+float sdf(vec3 p, int offset, int size){
     float stack[NODES_MAX];
     int stackIndex = 0;
 
-    for (int i = NODES_MAX - 1; i >= 0; i--) {
+    for (int i = offset; i < (size + offset); i++) {
         Node node = nodes.data[i];
 
         float d;
@@ -428,13 +434,13 @@ float sdf(vec3 p){
 //     return normalize(normal);
 // }
 
-vec3 getNormal(in vec3 p) {	
+vec3 getNormal(in vec3 p, in int cellIndex) {	
 	vec3 normal;
     float hOffset = 0.0001;
 	vec2 h = vec2(hOffset, 0.0);
-    normal.x = (sdf(p + h.xyy) - sdf(p - h.xyy));
-	normal.y = (sdf(p + h.yxy) - sdf(p - h.yxy));
-	normal.z = (sdf(p + h.yyx) - sdf(p - h.yyx));
+    normal.x = (sdf(p + h.xyy, cellInfo.data[cellIndex].offset, cellInfo.data[cellIndex].size) - sdf(p - h.xyy, cellInfo.data[cellIndex].offset, cellInfo.data[cellIndex].size));
+	normal.y = (sdf(p + h.yxy, cellInfo.data[cellIndex].offset, cellInfo.data[cellIndex].size) - sdf(p - h.yxy, cellInfo.data[cellIndex].offset, cellInfo.data[cellIndex].size));
+	normal.z = (sdf(p + h.yyx, cellInfo.data[cellIndex].offset, cellInfo.data[cellIndex].size) - sdf(p - h.yyx, cellInfo.data[cellIndex].offset, cellInfo.data[cellIndex].size));
     vec3 color = normalize(normal) * 0.5 + 0.5;
     return normalize(pow(color, vec3(2)) * 1.2);
     //return normalize(normal);
@@ -498,7 +504,18 @@ RayInfo rayMarching(vec3 direction){
     float t = 0.0;
     float r = 0.0;
     while(t < D) {
-        r = sdf(origin + direction * t);
+        vec3 p = origin + direction * t;
+        if (any(lessThan(p, aabbMin.xyz)) || any(greaterThanEqual(p, aabbMax.xyz))) {
+            t = D * 2;
+            break;
+        }
+
+        vec3 cellSize = (aabbMax.xyz - aabbMin.xyz) / 4.0;
+        ivec3 cell = ivec3((p - aabbMin.xyz) / cellSize);
+        cell = clamp(cell, ivec3(0), ivec3(4.0 - 1));
+        int cellIndex = int(getCellIndex(cell, 4));
+
+        r = sdf(p, cellInfo.data[cellIndex].offset, cellInfo.data[cellIndex].size);
         if(r < e) break;
         if(count > MAX_STEP) break;
         t += r;
@@ -594,7 +611,7 @@ void main()
 
     // fragColor = vec4(gammaCorrection(color),1.0);
 
-    origin = vec3(3.0 *sin(iTimer), 0.0, 3.0 *cos(iTimer));
+    //origin = vec3(3.0 *sin(iTimer), 0.0, 3.0 *cos(iTimer));
     vec2 uv = normalizeSpace();  
     vec3 direction = getDirection(uv);  
     RayInfo ri = rayMarching(direction);
@@ -604,7 +621,11 @@ void main()
     
     if(ri.dist < D) {
         vec3 position = origin + direction * ri.dist;
-        vec3 normal = getNormal(position);
+        vec3 cellSize = (aabbMax.xyz - aabbMin.xyz) / 4.0;
+        ivec3 cell = ivec3((p - aabbMin.xyz) / cellSize);
+        cell = clamp(cell, ivec3(0), ivec3(4.0 - 1));
+        int cellIndex = int(getCellIndex(cell, 4));
+        vec3 normal = getNormal(position, cellIndex);
         color =  normal;       
     }
 
