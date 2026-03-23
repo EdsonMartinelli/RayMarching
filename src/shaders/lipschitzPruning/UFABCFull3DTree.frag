@@ -376,6 +376,8 @@ float sdf(vec3 p){
     for (int i = 0; i < NODES_MAX; i++) {
         Node node = nodes.data[i];
 
+        int si = node.sign;
+
         float d;
         if (node.type == NODETYPE_BINARY) {
 
@@ -385,15 +387,7 @@ float sdf(vec3 p){
 
             float k = binaryOperation.k;
             int s = binaryOperation.s;
-            int ca = binaryOperation.ca;
-            int cb = binaryOperation.cb;
-            NodeState newState;
-
-            if(s < 0){
-                d = max(ca*leftValue, cb*rightValue) + smoothFunction(leftValue, cb*rightValue, k);
-            } else {
-                d = min(ca*leftValue, cb*rightValue) - smoothFunction(leftValue, rightValue, k);
-            }
+            d = s * (min(s * leftValue, s * rightValue) - smoothFunction(leftValue, rightValue, k));
             
             stackIndex -=2;
         } else if (node.type == NODETYPE_PRIMITIVE) {
@@ -401,7 +395,7 @@ float sdf(vec3 p){
             d = evalPrimitive(p, primitive);
         }
 
-        stack[stackIndex] = d;
+        stack[stackIndex] = d * si;
         stackIndex++;
     }
 

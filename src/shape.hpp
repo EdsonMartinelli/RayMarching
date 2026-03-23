@@ -350,3 +350,35 @@ void getNodesPost2(std::array<Node, 25>& nodes){
                {.type = NODE_BINARY, .index = 11, .sign = 0, .parent = -1} //24   
             }};
 }
+
+
+void getNodesPost3(std::array<Node, 25>& nodes){
+    nodes = {{ {.type = NODE_PRIMITIVE, .index = 0, .sign = 1, .parent = 24}, //0
+               {.type = NODE_PRIMITIVE, .index = 1, .sign = 1, .parent = 3}, //1
+               {.type = NODE_PRIMITIVE, .index = 2, .sign = -1, .parent = 3}, //2
+               {.type = NODE_BINARY, .index = 0, .sign = 1, .parent = 7},   //3
+               {.type = NODE_PRIMITIVE, .index = 3, .sign = 1, .parent = 6},  //4
+               {.type = NODE_PRIMITIVE, .index = 4, .sign = -1, .parent = 6}, //5
+               {.type = NODE_BINARY, .index = 1, .sign = 1, .parent = 7},   //6
+               {.type = NODE_BINARY, .index = 2, .sign = 1, .parent = 11},  //7
+               {.type = NODE_PRIMITIVE, .index = 5, .sign = 1, .parent = 10},  //8
+               {.type = NODE_PRIMITIVE, .index = 6, .sign = -1, .parent = 10},  //9
+               {.type = NODE_BINARY, .index = 3, .sign = 1, .parent = 11},   //10
+               {.type = NODE_BINARY, .index = 4, .sign = 1, .parent = 15},   //11
+               {.type = NODE_PRIMITIVE, .index = 7, .sign = 1, .parent = 14}, //12
+               {.type = NODE_PRIMITIVE, .index = 8, .sign = 1, .parent = 14}, //13
+               {.type = NODE_BINARY, .index = 5, .sign = -1, .parent = 15},   //14
+               {.type = NODE_BINARY, .index = 6, .sign = 1, .parent = 23},   //15
+
+
+               {.type = NODE_PRIMITIVE, .index = 9, .sign = 1, .parent = 22}, //16
+               {.type = NODE_PRIMITIVE, .index = 10, .sign = 1, .parent = 19}, //17
+               {.type = NODE_PRIMITIVE, .index = 11, .sign = 1, .parent = 19}, //18
+               {.type = NODE_BINARY, .index = 7, .sign = 1, .parent = 21},  //19
+               {.type = NODE_PRIMITIVE, .index = 12, .sign = 1, .parent = 21},  //20
+               {.type = NODE_BINARY, .index = 8, .sign = -1, .parent = 22}, // 21
+               {.type = NODE_BINARY, .index = 9, .sign = 1, .parent = 23}, //22
+               {.type = NODE_BINARY, .index = 10, .sign = 1, .parent = 24}, //23
+               {.type = NODE_BINARY, .index = 11, .sign = 1, .parent = -1} //24   
+            }};
+}

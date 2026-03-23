@@ -182,6 +182,7 @@ int main() {
 
     unsigned int vertexShader = createShader(GL_VERTEX_SHADER, "src/shaders/vertexshader.vert");
     unsigned int fragmentShader = createShader(GL_FRAGMENT_SHADER, "src/shaders/lipschitzPruning/UFABCFull3DPruning.frag");
+    //unsigned int fragmentShader = createShader(GL_FRAGMENT_SHADER, "src/shaders/prototypes/normal.frag");
     unsigned int shaderProgram = createShaderProgram(vertexShader, fragmentShader); 
 
     float vertices[] = {
@@ -231,7 +232,7 @@ int main() {
 
     getPrimitivesPost2(primitives);
     getBinaryOperationsPost2(binaryOperations);
-    getNodesPost2(nodes);
+    getNodesPost3(nodes);
 
     vec4 max = {.x = 2.0f, .y = 2.0f, .z = 2.0f, .w = 0.0f};
     vec4 min = {.x = -2.0f, .y = -2.0f, .z = -2.0f, .w = 0.0f};
@@ -361,7 +362,7 @@ int main() {
 
     getPrimitivesPost2(primitives);
     getBinaryOperationsPost2(binaryOperations);
-    getNodesPost2(nodes);
+    getNodesPost3(nodes);
 
     GLuint ssbo[4];
     glGenBuffers(4, ssbo);

@@ -209,6 +209,7 @@ void main() {
     
     for (int i = cellParentInfo.offset; i < (cellParentInfo.size + cellParentInfo.offset); i++) {
         Node node = nodes.data[i];
+        int si = node.sign;
 
         float d;
         if (node.type == NODETYPE_BINARY) {
@@ -219,15 +220,10 @@ void main() {
 
             float k = binaryOperation.k;
             int s = binaryOperation.s;
-            int ca = binaryOperation.ca;
-            int cb = binaryOperation.cb;
             NodeState newState;
 
-            if(s < 0){
-                d = max(ca*leftValue, cb*rightValue) + smoothFunction(leftValue, cb*rightValue, k);
-            } else {
-                d = min(ca*leftValue, cb*rightValue) - smoothFunction(leftValue, rightValue, k);
-            }
+            d = s * (min(s * leftValue, s * rightValue) - smoothFunction(leftValue, rightValue, k));
+
             if (abs(leftValue - rightValue) <= 2 * R + k) {
                newState.state = NODESTATE_ACTIVE;
             } else {
@@ -257,7 +253,7 @@ void main() {
         }
 
         Stack newItem;
-        newItem.value = d;
+        newItem.value = d * si;
         newItem.index = stateIndex;
         stack[stackIndex] = newItem;
         stackIndex++;
@@ -272,14 +268,15 @@ void main() {
             states[i].inactiveAncestors = true;
          }else {
             int parentIndex = nodes.data[i].parent;
-            bool hasInactiveAncestors = parentIndex >= 0 ? states[parentIndex].inactiveAncestors : false;
+            NodeState parentState = states[parentIndex];
+            bool hasInactiveAncestors = parentIndex >= 0 ? parentState.inactiveAncestors : false;
             states[i].inactiveAncestors = hasInactiveAncestors;
             isGlobalActive = states[i].state == NODESTATE_ACTIVE && !hasInactiveAncestors;
 
             if(parentIndex >= 0){
-                if(states[parentIndex].state == NODESTATE_SKIPPED){
-                    states[i].parent = states[parentIndex].parent;
-                    //states[i].sign *= states[parentIndex].index;
+                if(parentState.state == NODESTATE_SKIPPED){
+                    states[i].parent = parentState.parent;
+                    states[i].sign *= parentState.sign;
                 }
             }
 
@@ -299,7 +296,7 @@ void main() {
     cellInfoOutput.data[cellIndex] = newCell;
 
     int nodeIndex = 0;
-    for (int i = 0; i < stateIndex; i++) {
+    for (int i = 0; i < cellParentInfo.size; i++) {
         NodeState nodeState = states[i];
         if (nodeState.state == NODESTATE_ACTIVE && !nodeState.inactiveAncestors) {
             nodesOutput.data[cellOffset + nodeIndex] = nodes.data[i];

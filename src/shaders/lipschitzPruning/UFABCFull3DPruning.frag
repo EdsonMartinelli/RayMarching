@@ -381,7 +381,7 @@ float sdf(vec3 p, int offset, int size){
 
     for (int i = offset; i < (size + offset); i++) {
         Node node = nodes.data[i];
-
+        int si = node.sign;
         float d;
         if (node.type == NODETYPE_BINARY) {
 
@@ -391,15 +391,7 @@ float sdf(vec3 p, int offset, int size){
 
             float k = binaryOperation.k;
             int s = binaryOperation.s;
-            int ca = binaryOperation.ca;
-            int cb = binaryOperation.cb;
-            NodeState newState;
-
-            if(s < 0){
-                d = max(ca*leftValue, cb*rightValue) + smoothFunction(leftValue, cb*rightValue, k);
-            } else {
-                d = min(ca*leftValue, cb*rightValue) - smoothFunction(leftValue, rightValue, k);
-            }
+            d = s * (min(s * leftValue, s * rightValue) - smoothFunction(leftValue, rightValue, k));
             
             stackIndex -=2;
         } else if (node.type == NODETYPE_PRIMITIVE) {
@@ -407,7 +399,7 @@ float sdf(vec3 p, int offset, int size){
             d = evalPrimitive(p, primitive);
         }
 
-        stack[stackIndex] = d;
+        stack[stackIndex] = d * si;
         stackIndex++;
     }
 
@@ -621,10 +613,14 @@ void main()
     
     if(ri.dist < D) {
         vec3 position = origin + direction * ri.dist;
+
+
         vec3 cellSize = (aabbMax.xyz - aabbMin.xyz) / 4.0;
-        ivec3 cell = ivec3((p - aabbMin.xyz) / cellSize);
+        ivec3 cell = ivec3((position - aabbMin.xyz) / cellSize);
         cell = clamp(cell, ivec3(0), ivec3(4.0 - 1));
         int cellIndex = int(getCellIndex(cell, 4));
+
+
         vec3 normal = getNormal(position, cellIndex);
         color =  normal;       
     }
