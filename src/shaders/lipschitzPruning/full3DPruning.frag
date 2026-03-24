@@ -50,6 +50,8 @@ layout (location = 0) uniform vec2 iResolution;
 
 layout (location = 1) uniform float iTimer;
 
+layout (location = 2) uniform int subdivisions;
+
 vec4 aabbMax = vec4(2.0, 2.0, 2.0, 0.0);
 vec4 aabbMin = vec4(-2.0, -2.0, -2.0, 0.0);
 
@@ -416,26 +418,17 @@ float sdf(vec3 p, int offset, int size){
  * @param [in] pointValue SDF value at point p.
  * @return Normal vector at the point.
  */
-// vec3 getNormal(in vec3 p, float pointValue) {	
-// 	vec3 normal;
-//     float hOffset = 0.0001;
-// 	vec2 h = vec2(hOffset, 0.0);
-//     normal.x = (sdf(p + h.xyy).value - sdf(p - h.xyy).value);
-// 	normal.y = (sdf(p + h.yxy).value - sdf(p - h.yxy).value);
-// 	normal.z = (sdf(p + h.yyx).value - sdf(p - h.yyx).value);
-//     return normalize(normal);
-// }
-
 vec3 getNormal(in vec3 p, in int cellIndex) {	
 	vec3 normal;
     float hOffset = 0.0001;
 	vec2 h = vec2(hOffset, 0.0);
-    normal.x = (sdf(p + h.xyy, cellInfo.data[cellIndex].offset, cellInfo.data[cellIndex].size) - sdf(p - h.xyy, cellInfo.data[cellIndex].offset, cellInfo.data[cellIndex].size));
-	normal.y = (sdf(p + h.yxy, cellInfo.data[cellIndex].offset, cellInfo.data[cellIndex].size) - sdf(p - h.yxy, cellInfo.data[cellIndex].offset, cellInfo.data[cellIndex].size));
-	normal.z = (sdf(p + h.yyx, cellInfo.data[cellIndex].offset, cellInfo.data[cellIndex].size) - sdf(p - h.yyx, cellInfo.data[cellIndex].offset, cellInfo.data[cellIndex].size));
+    int cellOffset = cellInfo.data[cellIndex].offset;
+    int cellSize = cellInfo.data[cellIndex].size;
+    normal.x = sdf(p + h.xyy, cellOffset, cellSize) - sdf(p - h.xyy,  cellOffset, cellSize);
+	normal.y = (sdf(p + h.yxy, cellOffset, cellSize) - sdf(p - h.yxy,  cellOffset, cellSize));
+	normal.z = (sdf(p + h.yyx, cellOffset, cellSize) - sdf(p - h.yyx,  cellOffset, cellSize));
     vec3 color = normalize(normal) * 0.5 + 0.5;
     return normalize(pow(color, vec3(2)) * 1.2);
-    //return normalize(normal);
 }
 
 
@@ -491,23 +484,25 @@ vec3 getDirection(vec2 uv){
  * @return Struct RayInfo containing the object hit information, distance of origin given a direction
  * and steps.
  */
-RayInfo rayMarching(vec3 direction){
+RayInfo rayMarching(vec3 direction, float maxR){
     float count = 0.0;
     float t = 0.0;
     float r = 0.0;
     while(t < D) {
         vec3 p = origin + direction * t;
         if (any(lessThan(p, aabbMin.xyz)) || any(greaterThanEqual(p, aabbMax.xyz))) {
-            t = D * 2;
+            t = 1e20;
             break;
         }
 
-        vec3 cellSize = (aabbMax.xyz - aabbMin.xyz) / 4.0;
+        vec3 cellSize = (aabbMax.xyz - aabbMin.xyz) / subdivisions;
         ivec3 cell = ivec3((p - aabbMin.xyz) / cellSize);
-        cell = clamp(cell, ivec3(0), ivec3(4.0 - 1));
-        int cellIndex = int(getCellIndex(cell, 4));
+        cell = clamp(cell, ivec3(0), ivec3(subdivisions - 1));
+        int cellIndex = int(getCellIndex(cell, subdivisions));
 
         r = sdf(p, cellInfo.data[cellIndex].offset, cellInfo.data[cellIndex].size);
+
+        r = clamp(r, 0, maxR);
         if(r < e) break;
         if(count > MAX_STEP) break;
         t += r;
@@ -606,20 +601,20 @@ void main()
     //origin = vec3(3.0 *sin(iTimer), 0.0, 3.0 *cos(iTimer));
     vec2 uv = normalizeSpace();  
     vec3 direction = getDirection(uv);  
-    RayInfo ri = rayMarching(direction);
+    vec3 cellSize = (aabbMax.xyz - aabbMin.xyz) / subdivisions;
+    float maxR = length(cellSize) * 0.5;
+
+    RayInfo ri = rayMarching(direction, maxR);
 
     float p = 1 - (gl_FragCoord.y / iResolution.y);
     vec3 color = vec3(0.4,0.4,1.0) + vec3(p);
     
     if(ri.dist < D) {
         vec3 position = origin + direction * ri.dist;
-
-
-        vec3 cellSize = (aabbMax.xyz - aabbMin.xyz) / 4.0;
+        
         ivec3 cell = ivec3((position - aabbMin.xyz) / cellSize);
-        cell = clamp(cell, ivec3(0), ivec3(4.0 - 1));
-        int cellIndex = int(getCellIndex(cell, 4));
-
+        cell = clamp(cell, ivec3(0), ivec3(subdivisions - 1));
+        int cellIndex = int(getCellIndex(cell, subdivisions));
 
         vec3 normal = getNormal(position, cellIndex);
         color =  normal;       

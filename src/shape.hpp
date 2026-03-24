@@ -9,6 +9,11 @@ struct vec4{
     float w;
 };
 
+struct AABB{
+    vec4 maximum;
+    vec4 minimum;
+};
+
 struct BinaryOperation{
     float k; // raio do smooth
     int s; // operação: max ou min
@@ -59,205 +64,12 @@ struct CellInfo{
     int size;
 };
 
+void getAABB(struct AABB& aabb){
+    vec4 max = {.x = 2.0f, .y = 2.0f, .z = 2.0f, .w = 0.0f};
+    vec4 min = {.x = -2.0f, .y = -2.0f, .z = -2.0f, .w = 0.0f};
 
-void getParents(std::array<int, 25>& parents){
-    parents = {-1,0,0,
-                2,3,4,5,6,6,5,9,9,4,12,12,
-                3,15,15,
-                2,18,18,20,21,21,20};
+    aabb = {.maximum = max, .minimum = min};
 }
-
-void getNodes(std::array<Node, 25>& nodes){
-    nodes = {{ {.type = NODE_BINARY, .index = 0, .sign = 0, .parent = -1},
-               {.type = NODE_PRIMITIVE, .index = 0, .sign = 0, .parent = 0},
-               {.type = NODE_BINARY, .index = 1, .sign = 0, .parent = 0},
-               {.type = NODE_BINARY, .index = 2, .sign = 0, .parent = 2},
-               {.type = NODE_BINARY, .index = 3, .sign = 0, .parent = 3},
-               {.type = NODE_BINARY, .index = 4, .sign = 0, .parent = 4},
-               {.type = NODE_BINARY, .index = 5, .sign = 0, .parent = 5},
-               {.type = NODE_PRIMITIVE, .index = 1, .sign = 0, .parent = 6},
-               {.type = NODE_PRIMITIVE, .index = 2, .sign = 0, .parent = 6},
-               {.type = NODE_BINARY, .index = 6, .sign = 0, .parent = 5},
-               {.type = NODE_PRIMITIVE, .index = 3, .sign = 0, .parent = 9},
-               {.type = NODE_PRIMITIVE, .index = 4, .sign = 0, .parent = 9},
-               {.type = NODE_BINARY, .index = 7, .sign = 0, .parent = 4},
-               {.type = NODE_PRIMITIVE, .index = 5, .sign = 0, .parent = 12},
-               {.type = NODE_PRIMITIVE, .index = 6, .sign = 0, .parent = 12},
-               {.type = NODE_BINARY, .index = 8, .sign = 0, .parent = 3},
-               {.type = NODE_PRIMITIVE, .index = 7, .sign = 0, .parent = 15},
-               {.type = NODE_PRIMITIVE, .index = 8, .sign = 0, .parent = 15},
-               {.type = NODE_BINARY, .index = 9, .sign = 0, .parent = 2},
-               {.type = NODE_PRIMITIVE, .index = 9, .sign = 0, .parent = 18},
-               {.type = NODE_BINARY, .index = 10, .sign = 0, .parent = 18},
-               {.type = NODE_BINARY, .index = 11, .sign = 0, .parent = 20},
-               {.type = NODE_PRIMITIVE, .index = 10, .sign = 0, .parent = 21},
-               {.type = NODE_PRIMITIVE, .index = 11, .sign = 0, .parent = 21},
-               {.type = NODE_PRIMITIVE, .index = 12, .sign = 0, .parent = 20}
-            }};
-}
-
-void getPrimitives(std::array<Primitive, 13>& primitives){
-    Primitive floor = {.type = PRIMITIVE_FLOOR};
-    Primitive circleA = {.offsetX = -0.46, .offsetY = -0.5, .r = 0.5, .depth = 0.5, .type = PRIMITIVE_CYLINDER};
-    Primitive internalCircleA = {.offsetX = -0.46, .offsetY = -0.5, .r = 0.42, .depth = 0.51, .type = PRIMITIVE_CYLINDER};
-    Primitive circleB = {.offsetX = 0, .offsetY = 0.296743, .r = 0.5, .depth = 0.5, .type = PRIMITIVE_CYLINDER};
-    Primitive internalCircleB = {.offsetX = 0, .offsetY = 0.296743, .r = 0.42, .depth = 0.51, .type = PRIMITIVE_CYLINDER};
-    Primitive circleC = {.offsetX = 0.46, .offsetY = -0.5, .r = 0.5, .depth = 0.5, .type = PRIMITIVE_CYLINDER};
-    Primitive internalCircleC = {.offsetX = 0.46, .offsetY = -0.5, .r = 0.42, .depth = 0.51, .type = PRIMITIVE_CYLINDER};
-    Primitive boxCCutter = {.sideCenterX = 0.46, .sideCenterY = -0.5, .m = 1.690, .xEnd = 1, .th = 0.16, .depth = 0.51, .type = PRIMITIVE_BOX};
-    Primitive boxMidCutter = {.sideCenterX = 0.46, .sideCenterY = -0.5, .m = -0.5774, .xEnd = -1.15, .th = 0.16, .depth = 0.51, .type = PRIMITIVE_BOX};
-    Primitive boxYellow = {.sideCenterX = 0.46, .sideCenterY = -0.5, .m = -0.5774, .xEnd = -1.15, .th = 0.16, .depth = 0.5, .type = PRIMITIVE_BOX};
-    Primitive boxYellowCutter = {.sideCenterX = 0.46, .sideCenterY = -0.5, .m = -0.5774, .xEnd = -1.15, .th = 0.02, .depth = 0.51, .type = PRIMITIVE_BOX};
-    Primitive circleYellowCutter = {.offsetX = 0.46, .offsetY = -0.5, .r = 0.42, .depth = 0.51, .type = PRIMITIVE_CYLINDER};
-    Primitive planeYellowCutter = {.type = PRIMITIVE_PLANE_CUTTER};
-
-    primitives = {floor,
-                  circleA, 
-                  internalCircleA, 
-                  circleB, 
-                  internalCircleB, 
-                  circleC, 
-                  internalCircleC,
-                  boxCCutter,
-                  boxMidCutter,
-                  boxYellow,
-                  boxYellowCutter,
-                  circleYellowCutter,
-                  planeYellowCutter};
-}
-
-void getBinaryOperations(std::array<BinaryOperation, 12>& binaryOperations){
-    BinaryOperation min1 = {.k = 0, .s= 1, .ca = 1 , .cb = 1};
-    BinaryOperation min2 = {.k = 0, .s= 1, .ca = 1 , .cb = 1};
-    BinaryOperation max1 = {.k = 0, .s= -1, .ca = 1 , .cb = -1};
-    BinaryOperation min3 = {.k = 0, .s= 1, .ca = 1 , .cb = 1};
-    BinaryOperation min4 = {.k = 0, .s= 1, .ca = 1 , .cb = 1};
-    BinaryOperation max2 = {.k = 0, .s= -1, .ca = 1 , .cb = -1};
-    BinaryOperation max3 = {.k = 0, .s= -1, .ca = 1 , .cb = -1};
-    BinaryOperation max4 = {.k = 0, .s= -1, .ca = 1 , .cb = -1};
-    BinaryOperation min5 = {.k = 0, .s= 1, .ca = 1 , .cb = 1};
-    BinaryOperation max5 = {.k = 0, .s= -1, .ca = 1 , .cb = -1};
-    BinaryOperation min6 = {.k = 0, .s= 1, .ca = 1 , .cb = 1};
-    BinaryOperation min7 = {.k = 0.060, .s= 1, .ca = 1 , .cb = 1};
-
-    binaryOperations = {min1,
-                        min2,
-                        max1,
-                        min3,
-                        min4,
-                        max2,
-                        max3,
-                        max4,
-                        min5,
-                        max5,
-                        min6,
-                        min7};
-}
-
-
-
-
-
-
-
-
-void getPrimitivesPost(std::array<Primitive, 13>& primitives){
-    Primitive floor = {.type = PRIMITIVE_FLOOR};
-    Primitive circleA = {.offsetX = -0.46, .offsetY = -0.5, .r = 0.5, .depth = 0.5, .type = PRIMITIVE_CYLINDER};
-    Primitive internalCircleA = {.offsetX = -0.46, .offsetY = -0.5, .r = 0.42, .depth = 0.51, .type = PRIMITIVE_CYLINDER};
-    Primitive circleB = {.offsetX = 0, .offsetY = 0.296743, .r = 0.5, .depth = 0.5, .type = PRIMITIVE_CYLINDER};
-    Primitive internalCircleB = {.offsetX = 0, .offsetY = 0.296743, .r = 0.42, .depth = 0.51, .type = PRIMITIVE_CYLINDER};
-    Primitive circleC = {.offsetX = 0.46, .offsetY = -0.5, .r = 0.5, .depth = 0.5, .type = PRIMITIVE_CYLINDER};
-    Primitive internalCircleC = {.offsetX = 0.46, .offsetY = -0.5, .r = 0.42, .depth = 0.51, .type = PRIMITIVE_CYLINDER};
-    Primitive boxCCutter = {.sideCenterX = 0.46, .sideCenterY = -0.5, .m = 1.690, .xEnd = 1, .th = 0.16, .depth = 0.51, .type = PRIMITIVE_BOX};
-    Primitive boxMidCutter = {.sideCenterX = 0.46, .sideCenterY = -0.5, .m = -0.5774, .xEnd = -1.15, .th = 0.16, .depth = 0.51, .type = PRIMITIVE_BOX};
-    Primitive boxYellow = {.sideCenterX = 0.46, .sideCenterY = -0.5, .m = -0.5774, .xEnd = -1.15, .th = 0.16, .depth = 0.5, .type = PRIMITIVE_BOX};
-    Primitive boxYellowCutter = {.sideCenterX = 0.46, .sideCenterY = -0.5, .m = -0.5774, .xEnd = -1.15, .th = 0.02, .depth = 0.51, .type = PRIMITIVE_BOX};
-    Primitive circleYellowCutter = {.offsetX = 0.46, .offsetY = -0.5, .r = 0.42, .depth = 0.51, .type = PRIMITIVE_CYLINDER};
-    Primitive planeYellowCutter = {.type = PRIMITIVE_PLANE_CUTTER};
-
-    primitives = {planeYellowCutter,
-                  circleYellowCutter,
-                  boxYellowCutter,
-                  boxYellow,
-                  boxMidCutter,
-                  boxCCutter,
-                  internalCircleC,
-                  circleC,
-                  internalCircleB, 
-                  circleB, 
-                  internalCircleA, 
-                  circleA,
-                  floor};
-}
-
-
-void getBinaryOperationsPost(std::array<BinaryOperation, 12>& binaryOperations){
-    BinaryOperation min1 = {.k = 0, .s= 1, .ca = 1 , .cb = 1};
-    BinaryOperation min2 = {.k = 0, .s= 1, .ca = 1 , .cb = 1};
-    BinaryOperation max1 = {.k = 0, .s= -1, .ca = 1 , .cb = -1};
-    BinaryOperation min3 = {.k = 0, .s= 1, .ca = 1 , .cb = 1};
-    BinaryOperation min4 = {.k = 0.060, .s= 1, .ca = 1 , .cb = 1};
-    BinaryOperation max2 = {.k = 0, .s= -1, .ca = 1 , .cb = -1};
-    BinaryOperation min5 = {.k = 0, .s= 1, .ca = 1 , .cb = 1};
-    BinaryOperation min6 = {.k = 0, .s= 1, .ca = 1 , .cb = 1};
-    BinaryOperation max3 = {.k = 0, .s= -1, .ca = 1 , .cb = -1};
-    BinaryOperation min7 = {.k = 0, .s= 1, .ca = 1 , .cb = 1};
-    BinaryOperation max4 = {.k = 0, .s= -1, .ca = 1 , .cb = -1};
-    BinaryOperation max5 = {.k = 0, .s= -1, .ca = 1 , .cb = -1};
-
-    binaryOperations = {min1,
-                        min2,
-                        max1,
-                        min3,
-                        min4,
-                        max2,
-                        min5,
-                        min6,
-                        max3,
-                        min7,
-                        max4,
-                        max5};
-}
-
-void getNodesPost(std::array<Node, 25>& nodes){
-    nodes = {{ {.type = NODE_BINARY, .index = 0, .sign = 0, .parent = -1},
-               {.type = NODE_BINARY, .index = 1, .sign = 0, .parent = 0},
-               {.type = NODE_BINARY, .index = 2, .sign = 0, .parent = 1},
-               {.type = NODE_BINARY, .index = 3, .sign = 0, .parent = 2},
-               {.type = NODE_PRIMITIVE, .index = 0, .sign = 0, .parent = 3},
-               {.type = NODE_BINARY, .index = 4, .sign = 0, .parent = 3},
-               {.type = NODE_PRIMITIVE, .index = 1, .sign = 0, .parent = 5},
-               {.type = NODE_PRIMITIVE, .index = 2, .sign = 0, .parent = 5},
-               {.type = NODE_PRIMITIVE, .index = 3, .sign = 0, .parent = 2},
-
-               {.type = NODE_BINARY, .index = 5, .sign = 0, .parent = 1},
-               {.type = NODE_BINARY, .index = 6, .sign = 0, .parent = 9},
-               {.type = NODE_PRIMITIVE, .index = 4, .sign = 0, .parent = 10},
-               {.type = NODE_PRIMITIVE, .index = 5, .sign = 0, .parent = 10},
-               {.type = NODE_BINARY, .index = 7, .sign = 0, .parent = 9},
-               {.type = NODE_BINARY, .index = 8, .sign = 0, .parent = 13},
-               {.type = NODE_PRIMITIVE, .index = 6, .sign = 0, .parent = 14},
-               {.type = NODE_PRIMITIVE, .index = 7, .sign = 0, .parent = 14},
-               {.type = NODE_BINARY, .index = 9, .sign = 0, .parent = 13},
-               {.type = NODE_BINARY, .index = 10, .sign = 0, .parent = 17},
-               {.type = NODE_PRIMITIVE, .index = 8, .sign = 0, .parent = 18},
-               {.type = NODE_PRIMITIVE, .index = 9, .sign = 0, .parent = 18},
-               {.type = NODE_BINARY, .index = 11, .sign = 0, .parent = 17},
-               {.type = NODE_PRIMITIVE, .index = 10, .sign = 0, .parent = 21},
-               {.type = NODE_PRIMITIVE, .index = 11, .sign = 0, .parent = 21},
-               {.type = NODE_PRIMITIVE, .index = 12, .sign = 0, .parent = 0}
-            }};
-}
-
-
-
-
-
-
-
-
-
 
 void getPrimitivesPost2(std::array<Primitive, 13>& primitives){
     Primitive floor = {.type = PRIMITIVE_FLOOR};
@@ -320,38 +132,6 @@ void getBinaryOperationsPost2(std::array<BinaryOperation, 12>& binaryOperations)
                         min7};
 }
 
-void getNodesPost2(std::array<Node, 25>& nodes){
-    nodes = {{ {.type = NODE_PRIMITIVE, .index = 0, .sign = 0, .parent = 24}, //0
-               {.type = NODE_PRIMITIVE, .index = 1, .sign = 0, .parent = 3}, //1
-               {.type = NODE_PRIMITIVE, .index = 2, .sign = 0, .parent = 3}, //2
-               {.type = NODE_BINARY, .index = 0, .sign = 0, .parent = 7},   //3
-               {.type = NODE_PRIMITIVE, .index = 3, .sign = 0, .parent = 6},  //4
-               {.type = NODE_PRIMITIVE, .index = 4, .sign = 0, .parent = 6}, //5
-               {.type = NODE_BINARY, .index = 1, .sign = 0, .parent = 7},   //6
-               {.type = NODE_BINARY, .index = 2, .sign = 0, .parent = 11},  //7
-               {.type = NODE_PRIMITIVE, .index = 5, .sign = 0, .parent = 10},  //8
-               {.type = NODE_PRIMITIVE, .index = 6, .sign = 0, .parent = 10},  //9
-               {.type = NODE_BINARY, .index = 3, .sign = 0, .parent = 11},   //10
-               {.type = NODE_BINARY, .index = 4, .sign = 0, .parent = 15},   //11
-               {.type = NODE_PRIMITIVE, .index = 7, .sign = 0, .parent = 14}, //12
-               {.type = NODE_PRIMITIVE, .index = 8, .sign = 0, .parent = 14}, //13
-               {.type = NODE_BINARY, .index = 5, .sign = 0, .parent = 15},   //14
-               {.type = NODE_BINARY, .index = 6, .sign = 0, .parent = 23},   //15
-
-
-               {.type = NODE_PRIMITIVE, .index = 9, .sign = 0, .parent = 22}, //16
-               {.type = NODE_PRIMITIVE, .index = 10, .sign = 0, .parent = 19}, //17
-               {.type = NODE_PRIMITIVE, .index = 11, .sign = 0, .parent = 19}, //18
-               {.type = NODE_BINARY, .index = 7, .sign = 0, .parent = 21},  //19
-               {.type = NODE_PRIMITIVE, .index = 12, .sign = 0, .parent = 21},  //20
-               {.type = NODE_BINARY, .index = 8, .sign = 0, .parent = 22}, // 21
-               {.type = NODE_BINARY, .index = 9, .sign = 0, .parent = 23}, //22
-               {.type = NODE_BINARY, .index = 10, .sign = 0, .parent = 24}, //23
-               {.type = NODE_BINARY, .index = 11, .sign = 0, .parent = -1} //24   
-            }};
-}
-
-
 void getNodesPost3(std::array<Node, 25>& nodes){
     nodes = {{ {.type = NODE_PRIMITIVE, .index = 0, .sign = 1, .parent = 24}, //0
                {.type = NODE_PRIMITIVE, .index = 1, .sign = 1, .parent = 3}, //1
@@ -382,3 +162,4 @@ void getNodesPost3(std::array<Node, 25>& nodes){
                {.type = NODE_BINARY, .index = 11, .sign = 1, .parent = -1} //24   
             }};
 }
+

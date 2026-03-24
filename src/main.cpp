@@ -18,17 +18,18 @@
 #include <commun/shader.hpp>
 #include <cmath>
 #include <vector>
-#include <numeric> // Para std::iota
 #include <array>
 
 #include "shape.hpp"
 
 #define CALCULATE_FPS 1 /**< Defines if the program will calculate FPS (1) or not (0)*/
 #define CALCULATE_SHADER_TIME 0 /**< Defines if the program will calculate shader time (1) or not (0)*/
-#define USE_COMPUTE_SHADER 1 /**< Defines if the program gonna use compute shader (1) or not (0)*/
+#define USE_COMPUTE_SHADER 0 /**< Defines if the program gonna use compute shader (1) or not (0)*/
 
 int WINDOW_WIDTH = 800; /**< Global window width size. */
 int WINDOW_HEIGHT = 600; /**< Global window height size. */
+
+int GRID_LEVEL = 3; /**< Compute Shader's grid level. */
 
 int SAMPLES = 10;/**< Number of samples for avarage FPS and Shader Time calculte.*/
 double ONE_MINUTE = 60.0; /** Time of each sample. */
@@ -181,7 +182,7 @@ int main() {
     glViewport(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT);
 
     unsigned int vertexShader = createShader(GL_VERTEX_SHADER, "src/shaders/vertexshader.vert");
-    unsigned int fragmentShader = createShader(GL_FRAGMENT_SHADER, "src/shaders/lipschitzPruning/UFABCFull3DPruning.frag");
+    unsigned int fragmentShader = createShader(GL_FRAGMENT_SHADER, "src/shaders/lipschitzPruning/full3DTreeWithoutSSBO.frag");
     //unsigned int fragmentShader = createShader(GL_FRAGMENT_SHADER, "src/shaders/prototypes/normal.frag");
     unsigned int shaderProgram = createShaderProgram(vertexShader, fragmentShader); 
 
@@ -218,13 +219,10 @@ int main() {
 
 
 
-#if USE_COMPUTE_SHADER
-    const int N = 25; 
-    size_t sizeInBytes = N * sizeof(float); 
+#if USE_COMPUTE_SHADER   
+    int GRID_LEVEL = 3;
 
-    std::vector<float> state(N, 99); 
-
-    
+    struct AABB aabb;
     std::array<Primitive,13> primitives;
     std::array<BinaryOperation,12> binaryOperations;
     std::array<Node,25> nodes;
@@ -233,9 +231,7 @@ int main() {
     getPrimitivesPost2(primitives);
     getBinaryOperationsPost2(binaryOperations);
     getNodesPost3(nodes);
-
-    vec4 max = {.x = 2.0f, .y = 2.0f, .z = 2.0f, .w = 0.0f};
-    vec4 min = {.x = -2.0f, .y = -2.0f, .z = -2.0f, .w = 0.0f};
+    getAABB(aabb);
 
     GLuint ssbo[6];
     glGenBuffers(6, ssbo);
@@ -243,69 +239,92 @@ int main() {
     GLuint nodesCount;
     glGenBuffers(1, &nodesCount);
 
-    GLuint aabbMax;
-    glGenBuffers(1, &aabbMax);
+    GLuint aabbBuffer;
+    glGenBuffers(1, &aabbBuffer);
 
-    GLuint aabbMin;
-    glGenBuffers(1, &aabbMin);
+    GLuint zero = 0;
   
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo[0]);
     glBufferData(GL_SHADER_STORAGE_BUFFER, 13 * sizeof(primitives.data()[0]), primitives.data(), GL_DYNAMIC_DRAW);
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, ssbo[0]);
-
+    
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo[1]);
     glBufferData(GL_SHADER_STORAGE_BUFFER, 12 * sizeof(binaryOperations.data()[0]), binaryOperations.data(), GL_DYNAMIC_DRAW);
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, ssbo[1]);
-
+    
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo[2]);
-    glBufferData(GL_SHADER_STORAGE_BUFFER, 25 * sizeof(nodes.data()[0]), nodes.data(), GL_DYNAMIC_DRAW);
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, ssbo[2]);
+    glBufferData(GL_SHADER_STORAGE_BUFFER, (1 << (GRID_LEVEL * 2)) * (1 << (GRID_LEVEL * 2)) * (1 << (GRID_LEVEL * 2)) * 25 * sizeof(Node), nullptr, GL_DYNAMIC_DRAW);
+    glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, 25 * sizeof(nodes[0]), nodes.data());
 
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo[3]);
-    glBufferData(GL_SHADER_STORAGE_BUFFER, 1 * sizeof(cells.data()[0]), cells.data(), GL_DYNAMIC_DRAW);
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, ssbo[3]);
+    glBufferData(GL_SHADER_STORAGE_BUFFER,  (1 << (GRID_LEVEL * 2)) * (1 << (GRID_LEVEL * 2)) * (1 << (GRID_LEVEL * 2)) * sizeof(CellInfo), nullptr, GL_DYNAMIC_DRAW);
+    glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, sizeof(cells[0]), cells.data());
 
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo[4]);
-    glBufferData(GL_SHADER_STORAGE_BUFFER, 4 * 4 * 4 * 25 * sizeof(Node), nullptr, GL_DYNAMIC_DRAW);
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, ssbo[4]);
-
+    glBufferData(GL_SHADER_STORAGE_BUFFER, (1 << (GRID_LEVEL * 2)) * (1 << (GRID_LEVEL * 2)) * (1 << (GRID_LEVEL * 2)) * 25 * sizeof(Node), nullptr, GL_DYNAMIC_DRAW);
+    
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo[5]);
-    glBufferData(GL_SHADER_STORAGE_BUFFER, 4 * 4 * 4 * sizeof(CellInfo), nullptr, GL_DYNAMIC_DRAW);
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, ssbo[5]);
-
+    glBufferData(GL_SHADER_STORAGE_BUFFER, (1 << (GRID_LEVEL * 2)) * (1 << (GRID_LEVEL * 2)) * (1 << (GRID_LEVEL * 2)) * sizeof(CellInfo), nullptr, GL_DYNAMIC_DRAW);
+    
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, nodesCount);
-    glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(GLuint), 0, GL_DYNAMIC_COPY);
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 6, nodesCount);
-
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, aabbMax);
-    glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(vec4), &max, GL_DYNAMIC_COPY);
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 7,  aabbMax);
-
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, aabbMin);
-    glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(vec4), &min, GL_DYNAMIC_COPY);
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 8,  aabbMin);
-
+    glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(GLuint), &zero, GL_DYNAMIC_COPY);
+    
+    glBindBuffer(GL_UNIFORM_BUFFER, aabbBuffer);
+    glBufferData(GL_UNIFORM_BUFFER, sizeof(struct AABB), &aabb, GL_DYNAMIC_DRAW);
 
 
     unsigned int computeShader = createShader(GL_COMPUTE_SHADER, "src/shaders/compute.comp.glsl");
     unsigned int computeShaderProgram = createComputeShaderProgram(computeShader); 
 
-    int x = 1;
-    int y = 1;
-    int z = 1;
 
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, ssbo[0]);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, ssbo[1]);
+    // glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, ssbo[2]);
+    // glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, ssbo[3]);
+    // glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, ssbo[4]);
+    // glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, ssbo[5]);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 6, nodesCount);
+    glBindBufferBase(GL_UNIFORM_BUFFER, 0, aabbBuffer);
     glUseProgram(computeShaderProgram);
-    glDispatchCompute(x,y,z);
-    glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+    int loc = glGetUniformLocation(computeShaderProgram, "subdivisions");
+    
+
+
+    for(int i = 0; i < GRID_LEVEL ; i++){
+        int x = 1 << (i * 2);
+        int y = 1 << (i * 2);
+        int z = 1 << (i * 2);
+        
+        glUniform1i(loc, (1 << ((i + 1) * 2)));
+
+        glBindBuffer(GL_SHADER_STORAGE_BUFFER, nodesCount);
+        glClearBufferData(GL_SHADER_STORAGE_BUFFER, GL_R32UI, GL_RED_INTEGER, GL_UNSIGNED_INT, &zero);
+
+        if(i % 2 == 0){
+            glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, ssbo[2]);
+            glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, ssbo[3]);
+            glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, ssbo[4]);
+            glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, ssbo[5]);
+        } else {
+            glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, ssbo[4]);
+            glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, ssbo[5]);
+            glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, ssbo[2]);
+            glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, ssbo[3]);
+        }
+        
+
+        glDispatchCompute(x,y,z);
+        glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_BUFFER_UPDATE_BARRIER_BIT);
+    }
 
 
 
 
-    GLuint finalNodesCount;
-    glBindBuffer(GL_ATOMIC_COUNTER_BUFFER, nodesCount);
-    glGetBufferSubData(GL_ATOMIC_COUNTER_BUFFER, 0, sizeof(GLuint), &finalNodesCount);
 
-    printf("Total Node Count: %u\n", finalNodesCount);
+
+    // GLuint finalNodesCount;
+    // glBindBuffer(GL_ATOMIC_COUNTER_BUFFER, nodesCount);
+    // glGetBufferSubData(GL_ATOMIC_COUNTER_BUFFER, 0, sizeof(GLuint), &finalNodesCount);
+
+    // printf("Total Node Count: %u\n", finalNodesCount);
 
     // std::cout << "NODES:"<< std::endl;
 
@@ -341,11 +360,22 @@ int main() {
     //     count++;
     // }
 
-
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, ssbo[0]);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, ssbo[1]);
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, ssbo[4]);
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, ssbo[5]);
+    // glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, ssbo[4]);
+    //     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, ssbo[5]);
+    
+
+    if(GRID_LEVEL % 2 != 0){
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, ssbo[4]);
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, ssbo[5]);
+        
+    } else {
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, ssbo[2]);
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, ssbo[3]);
+    }
+   
+    
 
 #endif
 
@@ -406,6 +436,10 @@ int main() {
 
     int samplesCount = 0;
 
+
+    int subdivisions = (1 << (GRID_LEVEL * 2)); 
+
+    glUseProgram(shaderProgram);
   
 
     while (!glfwWindowShouldClose(window)) {
@@ -420,14 +454,10 @@ int main() {
 
         glBeginQuery(GL_TIME_ELAPSED, queryID);
 
-        glUseProgram(shaderProgram);
-        //int iResolutionLocation = glGetUniformLocation(shaderProgram, "iResolution");
         glUniform2f(0, (float)WINDOW_WIDTH, (float)WINDOW_HEIGHT);
         glUniform1f(1, currentTime);
-
-
-
-
+        glUniform1i(2, subdivisions);
+        
 
         glBindVertexArray(VAO);
         //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);

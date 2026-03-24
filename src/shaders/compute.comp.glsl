@@ -44,8 +44,8 @@ struct Primitive{
 struct Node{
     int type;
     int index;
-    int sign; //<--
-    int parent; //<--
+    int sign;
+    int parent;
 };
 
 struct CellInfo{
@@ -62,8 +62,8 @@ struct Stack{
 struct NodeState{
     int state;
     bool inactiveAncestors;
-    int sign; //<--
-    int parent; //<--
+    int sign;
+    int parent;
 };
 
 layout(std430, binding = 0) readonly buffer PrimitivesBuffer {
@@ -95,16 +95,13 @@ layout(std430, binding = 6) buffer NodeCounter {
     uint numNodes;
 };
 
-layout(std430, binding = 7) buffer aabbMaxBuffer {
-    vec4 aabbMax;
-};
+layout(std140, binding = 0) uniform AABBData {
+    vec4 maximum;
+    vec4 minimum;
+} aabb;
 
-layout(std430, binding = 8) buffer aabbMinBuffer {
-    vec4 aabbMin;
-};
+layout(location = 0) uniform int subdivisions;
 
-
-// shared Node activeNode[25]
 const int NODES_MAX = 25;
 
 float e = 0.0001;
@@ -148,7 +145,6 @@ float sdOBox(vec3 p3, vec2 sideOriginCenter, float m, float xEndCenter, float th
           q = abs(q) - vec2(l * 0.5, th);
     float v = length(max(q, 0.0)) + min(max(q.x, q.y), 0.0);   
     return opExtrusion(p3, v, depth); 
-
 }
 
 float sdCircle(vec3 p3, vec2 offset, float r, float depth){
@@ -192,13 +188,19 @@ uint getCellIndex(uvec3 globalID, uint size){
 
 void main() {
 
-    uint cellIndex = getCellIndex(gl_GlobalInvocationID, 4);
-    uint cellParentIndex = uint(cellIndex / 64);
+    uint cellIndex = getCellIndex(gl_GlobalInvocationID, subdivisions);
+    //uint cellParentIndex = uint(cellIndex / 64);
+
+    uvec3 parentIndex = gl_GlobalInvocationID.xyz / 4;
+    uint parentSubdivisions = subdivisions / 4;
+
+    uint cellParentIndex = getCellIndex( parentIndex,  parentSubdivisions);
+
 
     CellInfo cellParentInfo = cellInfo.data[cellParentIndex];
 
-    vec3 cellSize = (aabbMax.xyz - aabbMin.xyz) / 4.0;
-    vec3 cellCenter = aabbMin.xyz + cellSize * (vec3(gl_GlobalInvocationID.xyz) + 0.5);    
+    vec3 cellSize = (aabb.maximum.xyz - aabb.minimum.xyz) / subdivisions;
+    vec3 cellCenter = aabb.minimum.xyz + cellSize * (vec3(gl_GlobalInvocationID.xyz) + 0.5);    
 
     float R = length(cellSize) * 0.5;
 
@@ -212,6 +214,7 @@ void main() {
         int si = node.sign;
 
         float d;
+        NodeState newState;
         if (node.type == NODETYPE_BINARY) {
 
             BinaryOperation binaryOperation = binaryOperations.data[node.index];
@@ -220,7 +223,6 @@ void main() {
 
             float k = binaryOperation.k;
             int s = binaryOperation.s;
-            NodeState newState;
 
             d = s * (min(s * leftValue, s * rightValue) - smoothFunction(leftValue, rightValue, k));
 
@@ -235,22 +237,17 @@ void main() {
                     states[stack[stackIndex - 2].index].state = NODESTATE_INACTIVE;
                 }
             }
-            
             stackIndex -=2;
-            newState.inactiveAncestors = false;
-            newState.parent = node.parent;
-            newState.sign = node.sign;
-            states[i] = newState;
         } else if (node.type == NODETYPE_PRIMITIVE) {
             Primitive primitive = primitives.data[node.index];
             d = evalPrimitive(cellCenter, primitive);
-            NodeState newState;
             newState.state = NODESTATE_ACTIVE;
-            newState.inactiveAncestors = false;
-            newState.parent = node.parent;
-            newState.sign = node.sign;
-            states[stateIndex] = newState;
         }
+
+        newState.inactiveAncestors = false;
+        newState.parent = node.parent;
+        newState.sign = node.sign;
+        states[stateIndex] = newState;
 
         Stack newItem;
         newItem.value = d * si;
@@ -267,16 +264,15 @@ void main() {
          if (states[i].state == NODESTATE_INACTIVE) {
             states[i].inactiveAncestors = true;
          }else {
-            int parentIndex = nodes.data[i].parent;
-            NodeState parentState = states[parentIndex];
-            bool hasInactiveAncestors = parentIndex >= 0 ? parentState.inactiveAncestors : false;
+            int parentIndex = states[i].parent;
+            bool hasInactiveAncestors = parentIndex >= 0 ? states[parentIndex].inactiveAncestors : false;
             states[i].inactiveAncestors = hasInactiveAncestors;
             isGlobalActive = states[i].state == NODESTATE_ACTIVE && !hasInactiveAncestors;
 
             if(parentIndex >= 0){
-                if(parentState.state == NODESTATE_SKIPPED){
-                    states[i].parent = parentState.parent;
-                    states[i].sign *= parentState.sign;
+                if( states[parentIndex].state == NODESTATE_SKIPPED){
+                    states[i].parent = states[parentIndex].parent;
+                    states[i].sign *= states[parentIndex].sign;
                 }
             }
 
@@ -295,12 +291,22 @@ void main() {
     
     cellInfoOutput.data[cellIndex] = newCell;
 
+    int oldToNewIndex[NODES_MAX];
+    for(int i=0; i<NODES_MAX; i++) oldToNewIndex[i] = -1;
+
+    int currentIdx = 0;
+    for (int i = 0; i < cellParentInfo.size; i++) {
+        if (states[i].state == NODESTATE_ACTIVE && !states[i].inactiveAncestors) {
+            oldToNewIndex[i] = currentIdx++;
+        }
+    }
+
     int nodeIndex = 0;
     for (int i = 0; i < cellParentInfo.size; i++) {
         NodeState nodeState = states[i];
         if (nodeState.state == NODESTATE_ACTIVE && !nodeState.inactiveAncestors) {
-            nodesOutput.data[cellOffset + nodeIndex] = nodes.data[i];
-            nodesOutput.data[cellOffset + nodeIndex].parent = states[i].parent;
+            nodesOutput.data[cellOffset + nodeIndex] = nodes.data[cellParentInfo.offset + i];
+            nodesOutput.data[cellOffset + nodeIndex].parent = states[i].parent >= 0 ? oldToNewIndex[states[i].parent] : -1;
             nodesOutput.data[cellOffset + nodeIndex].sign = states[i].sign;
             nodeIndex++;
         }

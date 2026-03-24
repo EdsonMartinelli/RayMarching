@@ -136,10 +136,6 @@ layout(std430, binding = 2) readonly restrict buffer NodesBuffer {
     Node data[];
 } nodes;
 
-layout(std430, binding = 3) readonly restrict buffer CellInfoBuffer {
-    int data[];
-} cellInfo;
-
 
 
 
