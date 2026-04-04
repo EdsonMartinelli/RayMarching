@@ -22,15 +22,16 @@
 
 #include "shape.hpp"
 
-#define CALCULATE_FPS 1 /**< Define if the program will calculate FPS (1) or not (0)*/
-#define CALCULATE_SHADER_TIME 0 /**< Define if the program will calculate shader time (1) or not (0)*/
+#define CALCULATE_FPS 0 /**< Define if the program will calculate FPS (1) or not (0)*/
+#define CALCULATE_SHADER_TIME 0 /**< Define if the program will calculate fragment shader time (1) or not (0). It blocks the CPU, just for Benchmark.*/
+#define CALCULATE_COMPUTE_SHADER_TIME 1 /**< Define if the program will calculate compute shader time (1) or not (0). It blocks the CPU, just for Benchmark.*/
 #define USE_PRUNING_ALG 1 /**< Define if the program gonna use pruning algorithm (1) or not (0)*/
 #define USE_FAR_FIELDS_ALG 1 /**< Define if the program gonna use far-fields algorithm (1) or not (0)*/
 
 int WINDOW_WIDTH = 800; /**< Global window width size. */
 int WINDOW_HEIGHT = 600; /**< Global window height size. */
 
-int GRID_LEVEL = 2; /**< Compute Shader's grid level. */
+int GRID_LEVEL = 3; /**< Compute Shader's grid level. */
 
 int SAMPLES = 10;/**< Number of samples for avarage FPS and Shader Time calculte.*/
 double ONE_MINUTE = 60.0; /** Time of each sample. */
@@ -140,6 +141,22 @@ void calculteShaderMetrics(double ShaderTimeSamples[]){
     varianceShaderTimeSamples =  varianceShaderTimeSamples / SAMPLES;
     printf("Variância de FPS nas amostras: %.4f\n", varianceShaderTimeSamples);
     printf("Desvio Padrão de FPS nas amostras: %.4f\n", sqrt(varianceShaderTimeSamples));
+}
+#endif
+
+#if CALCULATE_COMPUTE_SHADER_TIME
+/**
+ * @brief Print metrics related to Compute Shader time.
+ * 
+ * Calculate time in ms of compute shader.
+ * 
+ * @param [in] timeStart time when the querie start.
+ * @param [in] timeEnd  time when the querie end.
+ */
+
+void printComputeShaderMetrics(GLuint64 timeStart, GLuint64 timeEnd){
+   double computeShaderTime = (timeEnd - timeStart) / 1000000.0;
+   printf("Tempo de execução do compute shader: %.4f\n", computeShaderTime);
 }
 #endif
 
@@ -298,8 +315,17 @@ int main() {
     glUseProgram(computeShaderProgram);
     int loc = glGetUniformLocation(computeShaderProgram, "subdivisions");
 
+    #if CALCULATE_COMPUTE_SHADER_TIME
+
+    GLuint queries[2];
+    glGenQueries(2, queries);
+
+    glQueryCounter(queries[0], GL_TIMESTAMP);
+
+    #endif
+
+
     for(int i = 0; i < GRID_LEVEL ; i++){
-         printf("Entrou, fodeu\n");
         int x = 1 << (i * 2);
         int y = 1 << (i * 2);
         int z = 1 << (i * 2);
@@ -336,6 +362,23 @@ int main() {
         glDispatchCompute(x,y,z);
         glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_BUFFER_UPDATE_BARRIER_BIT);
     }
+
+    #if CALCULATE_COMPUTE_SHADER_TIME
+
+    glQueryCounter(queries[1], GL_TIMESTAMP);
+
+    GLint available0, available1 = GL_FALSE;
+    while (available0 == GL_FALSE && available1 == GL_FALSE) {
+        glGetQueryObjectiv(queries[0], GL_QUERY_RESULT_AVAILABLE, &available0);
+        glGetQueryObjectiv(queries[1], GL_QUERY_RESULT_AVAILABLE, &available1);
+    }
+    GLuint64 timeStart, timeEnd;
+    glGetQueryObjectui64v(queries[0], GL_QUERY_RESULT, &timeStart);
+    glGetQueryObjectui64v(queries[1], GL_QUERY_RESULT, &timeEnd);
+    printComputeShaderMetrics(timeStart, timeEnd);
+
+    #endif
+
 
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, ssbo[0]);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, ssbo[1]);
