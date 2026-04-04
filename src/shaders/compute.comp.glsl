@@ -95,6 +95,11 @@ layout(std430, binding = 6) buffer NodeCounter {
     uint numNodes;
 };
 
+layout(std430, binding = 7) buffer FarFieldValuesBuffer {
+    int data[];
+} farFieldValues;
+
+
 layout(std140, binding = 0) uniform AABBData {
     vec4 maximum;
     vec4 minimum;
@@ -199,6 +204,27 @@ void main() {
 
     CellInfo cellParentInfo = cellInfo.data[cellParentIndex];
 
+
+
+
+
+
+
+    if(cellParentInfo.size == 0){
+        CellInfo newCell;
+        newCell.offset = 0;
+        newCell.size = 0;
+        cellInfoOutput.data[cellIndex] = newCell;
+
+
+    }
+
+
+
+
+
+
+
     vec3 cellSize = (aabb.maximum.xyz - aabb.minimum.xyz) / subdivisions;
     vec3 cellCenter = aabb.minimum.xyz + cellSize * (vec3(gl_GlobalInvocationID.xyz) + 0.5);    
 
@@ -256,6 +282,22 @@ void main() {
         stackIndex++;
         stateIndex++;
     }
+
+    float d = stack[0].value;
+    if(abs(d) > 2 * R){
+
+
+
+        
+    }
+
+
+
+
+
+
+
+
 
     int numGlobalActives = 0;
     for (int i = cellParentInfo.size - 1; i >= 0; i--) {

@@ -59,6 +59,15 @@ layout (location = 0) uniform vec2 iResolution;
 */
 layout (location = 1) uniform float iTimer;
 
+layout (location = 2) uniform int subdivisions;
+
+vec4 aabbMax = vec4(2.0, 2.0, 2.0, 0.0);
+vec4 aabbMin = vec4(-2.0, -2.0, -2.0, 0.0);
+
+// vec4 aabbMax = vec4(32.0, 2.0, 32.0, 0.0);
+// vec4 aabbMin = vec4(-32.0, -2.0, -32.0, 0.0);
+
+
 #define PRIMITIVE_CYLINDER 0 /*< Define the number for primitive cylinder (extruded circle). */
 #define PRIMITIVE_BOX 1 /*< Define the number for primitive box (extruded retangle). */
 #define PRIMITIVE_PLANE_CUTTER 2 /*< Define the number for primitive plane cutter (extruded plane with sin).*/
@@ -143,7 +152,6 @@ struct NodeState{
     int parent; /**< Current parent node. */
 };
 
-
 /**
  * @ingroup SSBOVariables
  * @brief Primitives node array.
@@ -172,16 +180,35 @@ layout(std430, binding = 2) readonly restrict buffer NodesBuffer {
  * @ingroup ObjVariables
  * @brief Object hit struct.
  */
-struct ObjectHit{
-    vec3 color; /**< Object point color. */  
-    float value; /**< Value at object point. */ 
-};
+layout(std430, binding = 3) readonly restrict buffer CellInfoBuffer {
+    CellInfo data[];
+} cellInfo;
+
+
+/**
+ * @ingroup SSBOVariables
+ * @brief Far-fields values input.
+*/
+layout(std430, binding = 4) buffer FarFieldValuesBuffer {
+    float data[];
+} farFieldValues;
+
+
+
+
+
+
+
+
+
+
 
 /**
  * @ingroup RayVariables
  * @brief Ray information struct.
 */
 struct RayInfo{
+    //ObjectHit objHit; /**< Object hit at the point */  
     float value; /**< Value at the point */  
     float dist; /**< Distance from camera origin */  
     float count; /**< Steps from camera origin */
@@ -191,7 +218,7 @@ struct RayInfo{
  * @ingroup CameraVariables
  * @brief Rays origin.
 */
-vec3 origin = vec3(1.0, 0.0, 2.0);
+vec3 origin = vec3(1.0, 0.0, 1.999);
 /**
  * @ingroup CameraVariables
  * @brief Rays target position.
@@ -232,6 +259,19 @@ float e = 0.0001;
 float MAX_STEP = 256.0;
 
 /**
+ * @brief Get the cell index.
+ *
+ * Get the correct cell index using size of subdivision and the position of cell.
+ *
+ * @param [in] posCell Cell position.
+ * @param [in] subd Subdividison quantity.
+ * @return Correct cell index.
+ */
+uint getCellIndex(ivec3 posCell, uint subd){
+    return (posCell.z * subd * subd) + (posCell.y * subd) + posCell.x;
+}
+
+/**
  * @brief Smooth minimum function.
  *
  * A quadractic polynomial smooth mininum function.
@@ -241,12 +281,14 @@ float MAX_STEP = 256.0;
  * @param [in] k Smooth value parameter.
  * @return Smooth value for given values.
  */
+
 float smoothFunction( float a, float b, float k ){
     if(k == 0) return 0;
     float d = abs(a - b);
     float h = max(k - d, 0.0);
     return h * h * (1.0 / (4.0 * k));
 }
+
 
 /**
  * @brief Extrusion operation for 2D SDFs.
@@ -341,7 +383,6 @@ float sdCircle(vec3 p3, vec2 offset, float r, float depth){
     return opExtrusion(p3, v, depth);
 }
 
-
 /**
  * @brief Plane SDF.
  *
@@ -393,17 +434,20 @@ float evalPrimitive(vec3 p, Primitive pr){
  * SDF function that combines UFABC logo SDF and plane SDF using min funcion at a given point.
  *
  * @param [in] p Normalized 3D space position.
- * @return The correct value of SDF at the position.
+ * @return The struct ObjectHit with the object color and the correct value of SDF at the position.
  */
-float sdf(vec3 p){
+float sdf(vec3 p, int offset, int size, uint cellIndex){
+
+    if(size == 0){
+         return farFieldValues.data[cellIndex];
+    }
+
     float stack[NODES_MAX];
     int stackIndex = 0;
 
-    for (int i = 0; i < NODES_MAX; i++) {
+    for (int i = offset; i < (size + offset); i++) {
         Node node = nodes.data[i];
-
         int si = node.sign;
-
         float d;
         if (node.type == NODETYPE_BINARY) {
 
@@ -431,19 +475,22 @@ float sdf(vec3 p){
 /**
  * @brief Get implicit functions normal.
  *
- * Get normal of a given point in the world using a numerical differentiation (Cental Difference).
+ * Get normal of a given point in the world using a numerical differentiation (Forward Difference).
  * The small value of the method is applied in the three axes (x, y, z).
  *
  * @param [in] p Normalized 3D space position.
+ * @param [in] pointValue SDF value at point p.
  * @return Normal vector at the point.
  */
-vec3 getNormal(in vec3 p) {	
+vec3 getNormal(in vec3 p, uint cellIndex) {	
 	vec3 normal;
     float hOffset = 0.0001;
 	vec2 h = vec2(hOffset, 0.0);
-    normal.x = (sdf(p + h.xyy) - sdf(p - h.xyy));
-	normal.y = (sdf(p + h.yxy) - sdf(p - h.yxy));
-	normal.z = (sdf(p + h.yyx) - sdf(p - h.yyx));
+    int cellOffset = int(cellInfo.data[cellIndex].offset);
+    int cellSize = int(cellInfo.data[cellIndex].size);
+    normal.x = sdf(p + h.xyy, cellOffset, cellSize, cellIndex) - sdf(p - h.xyy,  cellOffset, cellSize, cellIndex);
+	normal.y = sdf(p + h.yxy, cellOffset, cellSize, cellIndex) - sdf(p - h.yxy,  cellOffset, cellSize, cellIndex);
+	normal.z = sdf(p + h.yyx, cellOffset, cellSize, cellIndex) - sdf(p - h.yyx,  cellOffset, cellSize, cellIndex);
     vec3 color = normalize(normal) * 0.5 + 0.5;
     return normalize(pow(color, vec3(2)) * 1.2);
 }
@@ -506,7 +553,19 @@ RayInfo rayMarching(vec3 direction){
     float t = 0.0;
     float r = 0.0;
     while(t < D) {
-        r = sdf(origin + direction * t);
+        vec3 p = origin + direction * t;
+        if (any(lessThan(p, aabbMin.xyz)) || any(greaterThanEqual(p, aabbMax.xyz))) {
+            t = 1e20;
+            break;
+        }
+
+        vec3 cellSize = (aabbMax.xyz - aabbMin.xyz) / subdivisions;
+        ivec3 cell = ivec3((p - aabbMin.xyz) / cellSize);
+        cell = clamp(cell, ivec3(0), ivec3(subdivisions - 1));
+        int cellIndex = int(getCellIndex(cell, uint(subdivisions)));
+
+        r = sdf(p, int(cellInfo.data[cellIndex].offset), int(cellInfo.data[cellIndex].size), cellIndex);
+
         if(r < e) break;
         if(count > MAX_STEP) break;
         t += r;
@@ -519,7 +578,6 @@ RayInfo rayMarching(vec3 direction){
     return ri;
 }
 
-
 /**
  * @brief Main function to execute the scene.
  *
@@ -528,9 +586,11 @@ RayInfo rayMarching(vec3 direction){
  */
 void main()
 {
-    //origin = vec3(3.0 *sin(iTimer), 0.0, 3.0 *cos(iTimer));
+    //origin = vec3(1.999 *sin(iTimer), 0.0, 1.999 *cos(iTimer));
     vec2 uv = normalizeSpace();  
     vec3 direction = getDirection(uv);  
+    vec3 cellSize = (aabbMax.xyz - aabbMin.xyz) / subdivisions;
+
     RayInfo ri = rayMarching(direction);
 
     float p = 1 - (gl_FragCoord.y / iResolution.y);
@@ -538,7 +598,12 @@ void main()
     
     if(ri.dist < D) {
         vec3 position = origin + direction * ri.dist;
-        vec3 normal = getNormal(position);
+        
+        ivec3 cell = ivec3((position - aabbMin.xyz) / cellSize);
+        cell = clamp(cell, ivec3(0), ivec3(subdivisions - 1));
+        int cellIndex = int(getCellIndex(cell, uint(subdivisions)));
+
+        vec3 normal = getNormal(position, cellIndex);
         color =  normal;       
     }
 

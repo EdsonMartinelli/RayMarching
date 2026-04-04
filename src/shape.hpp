@@ -67,11 +67,13 @@ struct CellInfo{
 void getAABB(struct AABB& aabb){
     vec4 max = {.x = 2.0f, .y = 2.0f, .z = 2.0f, .w = 0.0f};
     vec4 min = {.x = -2.0f, .y = -2.0f, .z = -2.0f, .w = 0.0f};
+    // vec4 max = {.x = 32.0f, .y = 2.0f, .z = 32.0f, .w = 0.0f};
+    // vec4 min = {.x = -32.0f, .y = -2.0f, .z = -32.0f, .w = 0.0f};
 
     aabb = {.maximum = max, .minimum = min};
 }
 
-void getPrimitivesPost2(std::array<Primitive, 13>& primitives){
+void getPrimitivesPost(std::array<Primitive, 13>& primitives){
     Primitive floor = {.type = PRIMITIVE_FLOOR};
     Primitive circleA = {.offsetX = -0.46, .offsetY = -0.5, .r = 0.5, .depth = 0.5, .type = PRIMITIVE_CYLINDER};
     Primitive internalCircleA = {.offsetX = -0.46, .offsetY = -0.5, .r = 0.42, .depth = 0.51, .type = PRIMITIVE_CYLINDER};
@@ -103,7 +105,7 @@ void getPrimitivesPost2(std::array<Primitive, 13>& primitives){
 }
 
 
-void getBinaryOperationsPost2(std::array<BinaryOperation, 12>& binaryOperations){
+void getBinaryOperationsPost(std::array<BinaryOperation, 12>& binaryOperations){
     BinaryOperation max1 = {.k = 0, .s= -1, .ca = 1 , .cb = -1};
     BinaryOperation max2 = {.k = 0, .s= -1, .ca = 1 , .cb = -1};
     BinaryOperation min1 = {.k = 0, .s= 1, .ca = 1 , .cb = 1};
@@ -132,7 +134,7 @@ void getBinaryOperationsPost2(std::array<BinaryOperation, 12>& binaryOperations)
                         min7};
 }
 
-void getNodesPost3(std::array<Node, 25>& nodes){
+void getNodesPost(std::array<Node, 25>& nodes){
     nodes = {{ {.type = NODE_PRIMITIVE, .index = 0, .sign = 1, .parent = 24}, //0
                {.type = NODE_PRIMITIVE, .index = 1, .sign = 1, .parent = 3}, //1
                {.type = NODE_PRIMITIVE, .index = 2, .sign = -1, .parent = 3}, //2

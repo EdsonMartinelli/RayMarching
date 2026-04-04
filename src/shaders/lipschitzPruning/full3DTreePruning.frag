@@ -37,6 +37,11 @@
 */
 
 /**
+ * @defgroup SSBOVariables SSBO Variables 
+ * @brief Variables related to configuration and use of SSBOs.
+*/
+
+/**
  * @ingroup FragVariables
  * @brief Output color of the pixel.
 */
@@ -48,97 +53,132 @@ layout (location = 0) out vec4 fragColor;
 */
 layout (location = 0) uniform vec2 iResolution;
 
+/**
+ * @ingroup FragVariables
+ * @brief Time information for rotate.
+*/
 layout (location = 1) uniform float iTimer;
 
 layout (location = 2) uniform int subdivisions;
 
 vec4 aabbMax = vec4(2.0, 2.0, 2.0, 0.0);
 vec4 aabbMin = vec4(-2.0, -2.0, -2.0, 0.0);
+// vec4 aabbMax = vec4(32.0, 2.0, 32.0, 0.0);
+// vec4 aabbMin = vec4(-32.0, -2.0, -32.0, 0.0);
 
 
+#define PRIMITIVE_CYLINDER 0 /*< Define the number for primitive cylinder (extruded circle). */
+#define PRIMITIVE_BOX 1 /*< Define the number for primitive box (extruded retangle). */
+#define PRIMITIVE_PLANE_CUTTER 2 /*< Define the number for primitive plane cutter (extruded plane with sin).*/
+#define PRIMITIVE_FLOOR 3 /*< Define the number for primitive plane. */
 
+#define NODETYPE_PRIMITIVE 0 /*< Define node type as a primitive.*/
+#define NODETYPE_BINARY 1 /*< Define node type as a binary operation.*/
 
+const int NODES_MAX = 25; /*< Define the maximum number the nodes per tree.*/
 
-
-
-
-#define PRIMITIVE_CYLINDER 0
-#define PRIMITIVE_BOX 1
-#define PRIMITIVE_PLANE_CUTTER 2
-#define PRIMITIVE_FLOOR 3
-
-#define NODETYPE_PRIMITIVE 0
-#define NODETYPE_BINARY 1
-
-#define NODESTATE_ACTIVE 0
-#define NODESTATE_SKIPPED 1
-#define NODESTATE_INACTIVE 2
-
-const int NODES_MAX = 25;
-
+/**
+ * @ingroup SSBOVariables
+ * @brief Binary operation node struct.
+*/
 struct BinaryOperation{
-    float k;
-    int s;
-    int ca;
-    int cb;
+    float k; /**< Smooth radius.*/
+    int s; /**< Operation constraint: max or min.*/
+    int ca; /**< Value for left node.*/
+    int cb; /**< Value for right node.*/
 };
 
+/**
+ * @ingroup SSBOVariables
+ * @brief Primitive node struct.
+*/
 struct Primitive{
     //box
-    float sideCenterX;
-    float sideCenterY;
-    float m;
-    float xEnd;
-    float th;
+    float sideCenterX; /**< Center point of box origin side in X axis.*/
+    float sideCenterY; /**< Center point of box origin side in Y axis.*/
+    float m; /**<  Box slope.*/
+    float xEnd; /**< X coordenate of the center point of box end side.*/
+    float th; /**< Thickness of the box.*/
 
     //cylinder
-    float offsetX;
-    float offsetY;
-    float r;
+    float offsetX; /**< Cylinder offset in the X axis.*/
+    float offsetY; /**< Cylinder offset in the Y axis.*/
+    float r; /**< Cylinder radius.*/
 
-    float depth;
-    uint type;
+    float depth; /**< Extrude depth.*/
+    uint type; /**< Type of primitive.*/
 
-    float pad0, pad1;
+    float pad0, pad1; /**< Paddings for alignment.*/
 };
 
+/**
+ * @ingroup SSBOVariables
+ * @brief General node struct.
+*/
 struct Node{
-    int type;
-    int index;
-    int sign; //<--
-    int parent; //<--
+    int type; /**< Type of node.*/
+    int index; /**< Index of the position in original array (Primitive or Binary Operation) for the node.*/
+    int sign; /**< Signal used by the parent in the node calculation.*/
+    int parent; /**< Node parent in the node array.*/
 };
 
+/**
+ * @ingroup SSBOVariables
+ * @brief Tree information for the cell.
+*/
 struct CellInfo{
-    int offset;
-    int size;
+    uint offset; /**< Tree start in the node array for the cell.*/
+    uint size; /**< Tree size in the node array for the cell.*/
 };
 
-
+/**
+ * @ingroup SSBOVariables
+ * @brief Post order evaluation stack.
+*/
 struct Stack{
-    float value;
-    int index;
+    float value; /**< Node value.*/
+    int index; /**< Node index in cell (global index  - offset).*/
 };
 
+/**
+ * @ingroup SSBOVariables
+ * @brief Post order evaluation stack.
+*/
 struct NodeState{
-    int state;
-    bool inactiveAncestors;
-    int sign; //<--
-    int parent; //<--
+    int state; /**< Node current state.*/
+    bool inactiveAncestors; /**< Innactive parent mark.*/
+    int sign; /**< Current signal used by the parent in the node calculation.*/
+    int parent; /**< Current parent node. */
 };
 
+/**
+ * @ingroup SSBOVariables
+ * @brief Primitives node array.
+*/
 layout(std430, binding = 0) readonly restrict buffer PrimitivesBuffer {
     Primitive data[];
 } primitives;
 
+/**
+ * @ingroup SSBOVariables
+ * @brief Binary Operations node array.
+*/
 layout(std430, binding = 1) readonly restrict buffer BinaryOperationsBuffer {
     BinaryOperation data[];
 } binaryOperations;
 
+/**
+ * @ingroup SSBOVariables
+ * @brief Main node array for renderization.
+*/
 layout(std430, binding = 2) readonly restrict buffer NodesBuffer {
     Node data[];
 } nodes;
 
+/**
+ * @ingroup ObjVariables
+ * @brief Object hit struct.
+ */
 layout(std430, binding = 3) readonly restrict buffer CellInfoBuffer {
     CellInfo data[];
 } cellInfo;
@@ -153,21 +193,6 @@ layout(std430, binding = 3) readonly restrict buffer CellInfoBuffer {
 
 
 
-
-
-
-
-
-
-
-/**
- * @ingroup ObjVariables
- * @brief Object hit struct.
- */
-struct ObjectHit{
-    vec3 color; /**< Object point color. */  
-    float value; /**< Value at object point. */ 
-};
 
 /**
  * @ingroup RayVariables
@@ -224,11 +249,29 @@ float e = 0.0001;
 */
 float MAX_STEP = 256.0;
 
-
-uint getCellIndex(ivec3 globalID, uint size){
-    return (globalID.z * size * size) + (globalID.y * size) + globalID.x;
+/**
+ * @brief Get the cell index.
+ *
+ * Get the correct cell index using size of subdivision and the position of cell.
+ *
+ * @param [in] posCell Cell position.
+ * @param [in] subd Subdividison quantity.
+ * @return Correct cell index.
+ */
+uint getCellIndex(ivec3 posCell, uint subd){
+    return (posCell.z * subd * subd) + (posCell.y * subd) + posCell.x;
 }
 
+/**
+ * @brief Smooth minimum function.
+ *
+ * A quadractic polynomial smooth mininum function.
+ *
+ * @param [in] a Point value in the first SDF.
+ * @param [in] b Point value in the second SDF.
+ * @param [in] k Smooth value parameter.
+ * @return Smooth value for given values.
+ */
 
 float smoothFunction( float a, float b, float k ){
     if(k == 0) return 0;
@@ -331,7 +374,6 @@ float sdCircle(vec3 p3, vec2 offset, float r, float depth){
     return opExtrusion(p3, v, depth);
 }
 
-
 /**
  * @brief Plane SDF.
  *
@@ -339,12 +381,20 @@ float sdCircle(vec3 p3, vec2 offset, float r, float depth){
  * position is greatem than -1.0; negative, if position is less than -1.0.
  *
  * @param [in] p Normalized 3D space position.
- * @return The struct ObjectHit with the object color and the correct value of SDF at the position.
+ * @return The correct value of SDF at the position.
  */
 float sdFloor(vec3 p){
     return p.y + 1.0;
 }
 
+/**
+ * @brief SDF Evaluation.
+ *
+ * SDF evaluation function for each primitive.
+ *
+ * @param [in] p Normalized 3D space position.
+ * @return The correct value of SDF at the position.
+ */
 float evalPrimitive(vec3 p, Primitive pr){
     float d;
 
@@ -418,15 +468,15 @@ float sdf(vec3 p, int offset, int size){
  * @param [in] pointValue SDF value at point p.
  * @return Normal vector at the point.
  */
-vec3 getNormal(in vec3 p, in int cellIndex) {	
+vec3 getNormal(in vec3 p, uint cellIndex) {	
 	vec3 normal;
     float hOffset = 0.0001;
 	vec2 h = vec2(hOffset, 0.0);
-    int cellOffset = cellInfo.data[cellIndex].offset;
-    int cellSize = cellInfo.data[cellIndex].size;
+    int cellOffset = int(cellInfo.data[cellIndex].offset);
+    int cellSize = int(cellInfo.data[cellIndex].size);
     normal.x = sdf(p + h.xyy, cellOffset, cellSize) - sdf(p - h.xyy,  cellOffset, cellSize);
-	normal.y = (sdf(p + h.yxy, cellOffset, cellSize) - sdf(p - h.yxy,  cellOffset, cellSize));
-	normal.z = (sdf(p + h.yyx, cellOffset, cellSize) - sdf(p - h.yyx,  cellOffset, cellSize));
+	normal.y = sdf(p + h.yxy, cellOffset, cellSize) - sdf(p - h.yxy,  cellOffset, cellSize);
+	normal.z = sdf(p + h.yyx, cellOffset, cellSize) - sdf(p - h.yyx,  cellOffset, cellSize);
     vec3 color = normalize(normal) * 0.5 + 0.5;
     return normalize(pow(color, vec3(2)) * 1.2);
 }
@@ -484,7 +534,7 @@ vec3 getDirection(vec2 uv){
  * @return Struct RayInfo containing the object hit information, distance of origin given a direction
  * and steps.
  */
-RayInfo rayMarching(vec3 direction, float maxR){
+RayInfo rayMarching(vec3 direction){
     float count = 0.0;
     float t = 0.0;
     float r = 0.0;
@@ -498,11 +548,10 @@ RayInfo rayMarching(vec3 direction, float maxR){
         vec3 cellSize = (aabbMax.xyz - aabbMin.xyz) / subdivisions;
         ivec3 cell = ivec3((p - aabbMin.xyz) / cellSize);
         cell = clamp(cell, ivec3(0), ivec3(subdivisions - 1));
-        int cellIndex = int(getCellIndex(cell, subdivisions));
+        int cellIndex = int(getCellIndex(cell, uint(subdivisions)));
 
-        r = sdf(p, cellInfo.data[cellIndex].offset, cellInfo.data[cellIndex].size);
+        r = sdf(p, int(cellInfo.data[cellIndex].offset), int(cellInfo.data[cellIndex].size));
 
-        r = clamp(r, 0, maxR);
         if(r < e) break;
         if(count > MAX_STEP) break;
         t += r;
@@ -516,60 +565,6 @@ RayInfo rayMarching(vec3 direction, float maxR){
 }
 
 /**
- * @brief Blinn-Phong illumination model.
- *
- * Phong Illuminition model with Blinn optimazation.
- *
- * @param [in] cameraDirection Camera direction.
- * @param [in] position Point where the ray hits.
- * @param [in] normal Normal of position.
- * @param [in] objColor Color of the object hit by the ray.
- * @param [in] illumination quantity of light hitting the surface.
- * @return Correct color for phong illumination. 
- */
-// vec3 phongIllumination(vec3 cameraDirection,
-//                        vec3 position, vec3 normal,
-//                        vec3 objColor,
-//                        float illumination){
-//     vec3 ambientColor = (objColor * 0.1) * (lightColor * 0.1);
-//     vec3 lightDirection = normalize(lightOrigin - position);
-//     float diffuseReflection = dot(normal, lightDirection);
-//     vec3 diffuseColor = (objColor * 0.5) * (lightColor * 0.5) * max(diffuseReflection, 0);
-//     vec3 halfwayVector = normalize(cameraDirection + lightDirection); 
-//     float shininess = 1.;
-//     float facing = diffuseReflection > 0 ?  1 : 0;
-//     vec3 specularColor = facing * (objColor * 0.9) * (lightColor * 0.9) * pow(max(dot(normal, halfwayVector), 0.0), shininess);
-//     return ambientColor + (diffuseColor + specularColor) * illumination;
-// }
-
-/**
- * @brief Ray Marching algorithm for shadows.
- *
- * Starting at the hit point, advance the ray based on the direction of the light and value given by
- * the SDF, seeking to reach the maximum distance or hit a solid object to create a shadow.
- *
- * @param [in] originPoint Solid hit point.
- * @param [in] direction Ray direction towards the light origin.
- * @param [in] MAX_DIST Biggest distance between the solid hit point and the light origin.
- * @return Struct RayInfo containing the object hit information, distance of origin given a direction
- * and steps.
- */
-// float rayMarchingShadow(vec3 originPoint, vec3 direction, float MAX_DIST){
-//     float count = 0.0;
-//     float t = 0.0;
-//     ObjectHit objHit;
-//     while(t < MAX_DIST) {
-//         objHit = sdf(originPoint + direction * t);
-//         float r = objHit.value;
-//         if(r < e) return 0.;
-//         if(count > MAX_STEP) 0.;
-//         t += r;
-//         count = count + 1;
-//     }
-//     return 1.;
-// }
-
-/**
  * @brief Main function to execute the scene.
  *
  * The main function responsible to indicate the correct color of the pixel in the fragColor.
@@ -577,34 +572,12 @@ RayInfo rayMarching(vec3 direction, float maxR){
  */
 void main()
 {
-    // origin = vec3(3.0 *sin(iTimer), 0.0, 3.0 *cos(iTimer));
-    // vec2 uv = normalizeSpace();  
-    // vec3 cameraDirection = getDirection(uv);  
-    // RayInfo ri = rayMarching(cameraDirection);
-    
-    // vec3 color = vec3(0.0,0.0,0.0);
-    
-    // if(ri.dist < D) {
-    //     vec3 position = origin + cameraDirection * ri.dist;
-    //     vec3 normal = getNormal(position, (ri.objHit).value);
-    //     vec3 objColor = (ri.objHit).color;
-    //     vec3 lightDirection = lightOrigin - position;
-    //     float MAX_DIST = length(lightDirection);
-    //     vec3 normalizedLightDirection = lightDirection / MAX_DIST;
-    //     float illumination = rayMarchingShadow(position + (normal * e), normalizedLightDirection, MAX_DIST);
-    //     color = phongIllumination(cameraDirection, position, normal, objColor, illumination);
-             
-    // }
-
-    // fragColor = vec4(gammaCorrection(color),1.0);
-
-    //origin = vec3(3.0 *sin(iTimer), 0.0, 3.0 *cos(iTimer));
+    //origin = vec3(1.999 *sin(iTimer), 0.0, 1.999 *cos(iTimer));
     vec2 uv = normalizeSpace();  
     vec3 direction = getDirection(uv);  
     vec3 cellSize = (aabbMax.xyz - aabbMin.xyz) / subdivisions;
-    float maxR = length(cellSize) * 0.5;
 
-    RayInfo ri = rayMarching(direction, maxR);
+    RayInfo ri = rayMarching(direction);
 
     float p = 1 - (gl_FragCoord.y / iResolution.y);
     vec3 color = vec3(0.4,0.4,1.0) + vec3(p);
@@ -614,7 +587,7 @@ void main()
         
         ivec3 cell = ivec3((position - aabbMin.xyz) / cellSize);
         cell = clamp(cell, ivec3(0), ivec3(subdivisions - 1));
-        int cellIndex = int(getCellIndex(cell, subdivisions));
+        int cellIndex = int(getCellIndex(cell, uint(subdivisions)));
 
         vec3 normal = getNormal(position, cellIndex);
         color =  normal;       

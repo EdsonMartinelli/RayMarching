@@ -1,39 +1,18 @@
 /**
- * @brief UFABC logotype and plane renderized by Ray Maching in 3D.
+ * @brief Pruning Algorithm
  *
- * UFABC logo in the center of scene, SDF plane (space divider) and
- * camera looking at scene center (right-hand coordinate system). This configuration
- * is renderized by a standard Ray Marching method with maximum distance equals 32.0.
+ * Pruning algorithm described by Barbier at el. in the paper Lipschitz Pruning  Hierarchical Simplification 
+ * of Primitive‐Based SDFs with far-fields procedure.
  *
  * @author Edson Martinelli
- * @date 2025
+ * @date 2026
  */
 
 #version 430 core
 
 /**
- * @defgroup FragVariables Fragment Variables
- * @brief Variables related to fragment shader input, output and uniforms.
-*/
-
-/**
- * @defgroup CameraVariables Camera Variables
- * @brief Variables related to camera system.
-*/
-
-/**
- * @defgroup ObjVariables Object Variables
- * @brief Variables related to objects in scene.
-*/
-
-/**
- * @defgroup LightVariables Light Variables
- * @brief Variables related to light.
-*/
-
-/**
- * @defgroup RayVariables Ray Variables
- * @brief Variables related to Ray Marching.
+ * @defgroup ComputeVariables Compute Variables 
+ * @brief Variables related to compute shader and parallel programing.
 */
 
 /**
@@ -42,22 +21,14 @@
 */
 
 /**
- * @ingroup FragVariables
- * @brief Output color of the pixel.
+ * @defgroup ConfigVariables Configuration Variables 
+ * @brief Variables related to algorithm configuration.
 */
-layout (location = 0) out vec4 fragColor;
 
 /**
- * @ingroup FragVariables
- * @brief Viewport and window resolution(x = width, y = height).
+ * @defgroup RayVariables Ray Variables
+ * @brief Variables related to Ray Marching.
 */
-layout (location = 0) uniform vec2 iResolution;
-
-/**
- * @ingroup FragVariables
- * @brief Time information for rotate.
-*/
-layout (location = 1) uniform float iTimer;
 
 #define PRIMITIVE_CYLINDER 0 /*< Define the number for primitive cylinder (extruded circle). */
 #define PRIMITIVE_BOX 1 /*< Define the number for primitive box (extruded retangle). */
@@ -67,7 +38,15 @@ layout (location = 1) uniform float iTimer;
 #define NODETYPE_PRIMITIVE 0 /*< Define node type as a primitive.*/
 #define NODETYPE_BINARY 1 /*< Define node type as a binary operation.*/
 
-const int NODES_MAX = 25; /*< Define the maximum number the nodes per tree.*/
+#define NODESTATE_ACTIVE 0 /*< Define node state as active.*/
+#define NODESTATE_SKIPPED 1 /*< Define node state as skipped.*/
+#define NODESTATE_INACTIVE 2 /*< Define node state as innactive.*/
+
+/**
+ * @ingroup ComputeVariables
+ * @brief Size for each work group.
+*/
+layout(local_size_x = 4, local_size_y = 4, local_size_z = 4) in;
 
 /**
  * @ingroup SSBOVariables
@@ -119,8 +98,8 @@ struct Node{
  * @brief Tree information for the cell.
 */
 struct CellInfo{
-    uint offset; /**< Tree start in the node array for the cell.*/
-    uint size; /**< Tree size in the node array for the cell.*/
+    int offset; /**< Tree start in the node array for the cell.*/
+    int size;  /**< Tree size in the node array for the cell.*/
 };
 
 /**
@@ -143,12 +122,11 @@ struct NodeState{
     int parent; /**< Current parent node. */
 };
 
-
 /**
  * @ingroup SSBOVariables
  * @brief Primitives node array.
 */
-layout(std430, binding = 0) readonly restrict buffer PrimitivesBuffer {
+layout(std430, binding = 0) readonly buffer PrimitivesBuffer {
     Primitive data[];
 } primitives;
 
@@ -156,80 +134,94 @@ layout(std430, binding = 0) readonly restrict buffer PrimitivesBuffer {
  * @ingroup SSBOVariables
  * @brief Binary Operations node array.
 */
-layout(std430, binding = 1) readonly restrict buffer BinaryOperationsBuffer {
+layout(std430, binding = 1) readonly buffer BinaryOperationsBuffer {
     BinaryOperation data[];
 } binaryOperations;
 
 /**
  * @ingroup SSBOVariables
- * @brief Main node array for renderization.
+ * @brief Input node array.
 */
-layout(std430, binding = 2) readonly restrict buffer NodesBuffer {
+layout(std430, binding = 2) readonly buffer NodesBuffer {
     Node data[];
 } nodes;
 
 /**
- * @ingroup ObjVariables
- * @brief Object hit struct.
- */
-struct ObjectHit{
-    vec3 color; /**< Object point color. */  
-    float value; /**< Value at object point. */ 
+ * @ingroup SSBOVariables
+ * @brief Input cell node array.
+*/
+layout(std430, binding = 3) readonly buffer CellInfoBuffer {
+    CellInfo data[];
+} cellInfo;
+
+/**
+ * @ingroup SSBOVariables
+ * @brief Output node array.
+*/
+layout(std430, binding = 4) buffer NodesOutputBuffer {
+    Node data[];
+} nodesOutput;
+
+/**
+ * @ingroup SSBOVariables
+ * @brief Output cell node array.
+*/
+layout(std430, binding = 5) buffer CellInfoOutputBuffer {
+    CellInfo data[];
+} cellInfoOutput;
+
+
+/**
+ * @ingroup SSBOVariables
+ * @brief Node counter.
+*/
+layout(std430, binding = 6) buffer NodeCounter {
+    uint numNodes;
 };
 
 /**
- * @ingroup RayVariables
- * @brief Ray information struct.
+ * @ingroup SSBOVariables
+ * @brief Far-fields values input.
 */
-struct RayInfo{
-    float value; /**< Value at the point */  
-    float dist; /**< Distance from camera origin */  
-    float count; /**< Steps from camera origin */
-};
+layout(std430, binding = 7) buffer FarFieldValuesInputBuffer {
+    float data[];
+} farFieldValuesInput;
 
 /**
- * @ingroup CameraVariables
- * @brief Rays origin.
+ * @ingroup SSBOVariables
+ * @brief Far-fields values output.
 */
-vec3 origin = vec3(1.0, 0.0, 2.0);
-/**
- * @ingroup CameraVariables
- * @brief Rays target position.
-*/
-vec3 lookAt = vec3(0.0, 0.0, 0.0);
-/**
- * @ingroup CameraVariables
- * @brief Vector for up direction. 
-*/
-vec3 vup = normalize(vec3(0.0, 1.0, 0.0));
+layout(std430, binding = 8) buffer FarFieldValuesOutputBuffer {
+    float data[];
+} farFieldValuesOutput;
+
 
 /**
- * @ingroup LightVariables
- * @brief Light point position. 
+ * @ingroup ConfigVariables
+ * @brief AABB points to pruning algorithm.
 */
-vec3 lightOrigin = vec3(0.0, 1.0, 2.0);
+layout(std140, binding = 0) uniform AABBData {
+    vec4 maximum;
+    vec4 minimum;
+} aabb;
 
 /**
- * @ingroup LightVariables
- * @brief Light color. 
+ * @ingroup ConfigVariables
+ * @brief Number of espace subdivisions per axis to pruning algorithm.
 */
-vec3 lightColor =  vec3(1.0, 1.0, 1.0);
+layout(location = 0) uniform int subdivisions;
 
 /**
- * @ingroup RayVariables
- * @brief Maximun ray distance. 
+ * @ingroup ConfigVariables
+ * @brief Maxmimum number of nodes.
 */
-float D = 32.0;
+const int NODES_MAX = 25;
+
 /**
  * @ingroup RayVariables
  * @brief Minimun next step to consider the ray hits a surface (maximun error). 
 */
 float e = 0.0001;
-/**
- * @ingroup RayVariables
- * @brief Maximun ray steps.
-*/
-float MAX_STEP = 256.0;
 
 /**
  * @brief Smooth minimum function.
@@ -323,7 +315,6 @@ float sdOBox(vec3 p3, vec2 sideOriginCenter, float m, float xEndCenter, float th
           q = abs(q) - vec2(l * 0.5, th);
     float v = length(max(q, 0.0)) + min(max(q.x, q.y), 0.0);   
     return opExtrusion(p3, v, depth); 
-
 }
 
 /**
@@ -341,7 +332,6 @@ float sdCircle(vec3 p3, vec2 offset, float r, float depth){
     return opExtrusion(p3, v, depth);
 }
 
-
 /**
  * @brief Plane SDF.
  *
@@ -349,19 +339,20 @@ float sdCircle(vec3 p3, vec2 offset, float r, float depth){
  * position is greatem than -1.0; negative, if position is less than -1.0.
  *
  * @param [in] p Normalized 3D space position.
- * @return The correct value of SDF at the position.
+ * @return The struct ObjectHit with the object color and the correct value of SDF at the position.
  */
 float sdFloor(vec3 p){
     return p.y + 1.0;
 }
 
 /**
- * @brief SDF Evaluation.
+ * @brief Primitive Evaluation.
  *
- * SDF evaluation function for each primitive.
+ * Primitive type evaluation from node.
  *
  * @param [in] p Normalized 3D space position.
- * @return The correct value of SDF at the position.
+ * @param [in] pr Primitive type.
+ * @return  The correct value of SDF at the position.
  */
 float evalPrimitive(vec3 p, Primitive pr){
     float d;
@@ -388,159 +379,173 @@ float evalPrimitive(vec3 p, Primitive pr){
 }
 
 /**
- * @brief Complete World SDF .
+ * @brief Get index by Global Identificator.
  *
- * SDF function that combines UFABC logo SDF and plane SDF using min funcion at a given point.
+ * Use size of subdivisions and Global Identificator to determine cell index.
  *
- * @param [in] p Normalized 3D space position.
- * @return The correct value of SDF at the position.
+ * @param [in] globalID Global thread identificator .
+ * @param [in] pr Subdivision size.
+ * @return The correct value of index for the cell.
  */
-float sdf(vec3 p){
-    float stack[NODES_MAX];
+uint getCellIndex(uvec3 globalID, uint size){
+    return (globalID.z * size * size) + (globalID.y * size) + globalID.x;
+}
+
+
+void main() {
+
+    uint cellIndex = getCellIndex(gl_GlobalInvocationID, subdivisions);
+
+    uvec3 parentIndex = gl_GlobalInvocationID.xyz / 4;
+    uint parentSubdivisions = subdivisions / 4;
+
+    uint cellParentIndex = getCellIndex( parentIndex,  parentSubdivisions);
+
+    CellInfo cellParentInfo = cellInfo.data[cellParentIndex];
+
+
+
+
+    if(cellParentInfo.size == 0){
+        CellInfo newCell;
+        newCell.offset = 0;
+        newCell.size = 0;
+        cellInfoOutput.data[cellIndex] = newCell;
+        farFieldValuesOutput.data[cellIndex] = farFieldValuesInput.data[cellParentIndex];
+        return;
+    }
+
+
+
+
+
+    vec3 cellSize = (aabb.maximum.xyz - aabb.minimum.xyz) / subdivisions;
+    vec3 cellCenter = aabb.minimum.xyz + cellSize * (vec3(gl_GlobalInvocationID.xyz) + 0.5);    
+
+    float R = length(cellSize) * 0.5;
+
+    NodeState states[NODES_MAX];
+    Stack stack[NODES_MAX];
+    int stateIndex = 0;
     int stackIndex = 0;
-
-    for (int i = 0; i < NODES_MAX; i++) {
+    
+    for (int i = cellParentInfo.offset; i < (cellParentInfo.size + cellParentInfo.offset); i++) {
         Node node = nodes.data[i];
-
         int si = node.sign;
 
         float d;
+        NodeState newState;
         if (node.type == NODETYPE_BINARY) {
 
             BinaryOperation binaryOperation = binaryOperations.data[node.index];
-            float leftValue = stack[stackIndex - 2];
-            float rightValue = stack[stackIndex - 1];
+            float leftValue = stack[stackIndex - 2].value;
+            float rightValue = stack[stackIndex - 1].value;
 
             float k = binaryOperation.k;
             int s = binaryOperation.s;
+
             d = s * (min(s * leftValue, s * rightValue) - smoothFunction(leftValue, rightValue, k));
-            
+
+            if (abs(leftValue - rightValue) <= 2 * R + k) {
+               newState.state = NODESTATE_ACTIVE;
+            } else {
+               newState.state = NODESTATE_SKIPPED;
+
+                if (s * leftValue < s * rightValue) {
+                    states[stack[stackIndex - 1].index].state = NODESTATE_INACTIVE;
+                } else {
+                    states[stack[stackIndex - 2].index].state = NODESTATE_INACTIVE;
+                }
+            }
             stackIndex -=2;
         } else if (node.type == NODETYPE_PRIMITIVE) {
             Primitive primitive = primitives.data[node.index];
-            d = evalPrimitive(p, primitive);
+            d = evalPrimitive(cellCenter, primitive);
+            newState.state = NODESTATE_ACTIVE;
         }
 
-        stack[stackIndex] = d * si;
+        newState.inactiveAncestors = false;
+        newState.parent = node.parent;
+        newState.sign = node.sign;
+        states[stateIndex] = newState;
+
+        Stack newItem;
+        newItem.value = d * si;
+        newItem.index = stateIndex;
+        stack[stackIndex] = newItem;
         stackIndex++;
+        stateIndex++;
     }
 
-    return stack[0];
-}
-
-/**
- * @brief Get implicit functions normal.
- *
- * Get normal of a given point in the world using a numerical differentiation (Cental Difference).
- * The small value of the method is applied in the three axes (x, y, z).
- *
- * @param [in] p Normalized 3D space position.
- * @return Normal vector at the point.
- */
-vec3 getNormal(in vec3 p) {	
-	vec3 normal;
-    float hOffset = 0.0001;
-	vec2 h = vec2(hOffset, 0.0);
-    normal.x = (sdf(p + h.xyy) - sdf(p - h.xyy));
-	normal.y = (sdf(p + h.yxy) - sdf(p - h.yxy));
-	normal.z = (sdf(p + h.yyx) - sdf(p - h.yyx));
-    vec3 color = normalize(normal) * 0.5 + 0.5;
-    return normalize(pow(color, vec3(2)) * 1.2);
-}
 
 
-/**
- * @brief Apply gamma correction to a color.
- *
- * Find the correct color based in the eyes structure.
- *
- * @param [in] color Color to be correction.
- * @return Color with gamma correction.
- */
-vec3 gammaCorrection(vec3 color){
-    float gamma = 2.2;
-    return pow(color, vec3(1.0/gamma)); 
-}
 
-/**
- * @brief Normalize space coordenates.
- *
- * Use gl_FragCoord (current pixel coordenate) and iResolution uniform to generate a 2D normalized
- * space.
- *
- * @return Normalized 2D space position.
- */
-vec2 normalizeSpace(){
-    return (gl_FragCoord.xy * 2.0 - iResolution.xy)/iResolution.y;  
-}
-
-/**
- * @brief Get direction to given normalized pixel.
- *
- * Use cross product to produce a offset for ray origin point based in the current normalized pixel
- * position that dictates the direction.
- *
- * @param [in] uv Normalized space position.
- * @return Direction of ray to given normalized pixel.
- */
-vec3 getDirection(vec2 uv){
-    vec3 viewDir = normalize(lookAt - origin);
-    vec3 hViewport = cross(viewDir, vup);
-    vec3 vViewport = cross(hViewport, viewDir);
-    vec3 viewportPoint = (hViewport * uv.x) + (vViewport * uv.y);
-    return normalize(viewportPoint + viewDir);  
-}
-
-/**
- * @brief Ray Marching Algorithm.
- *
- * Starting at the origin, advance the ray based on the direction and value given by the SDF, seeking
- * to find solid hit or reach the maximum distance.
- *
- * @param [in] direction Ray direction.
- * @return Struct RayInfo containing the object hit information, distance of origin given a direction
- * and steps.
- */
-RayInfo rayMarching(vec3 direction){
-    float count = 0.0;
-    float t = 0.0;
-    float r = 0.0;
-    while(t < D) {
-        r = sdf(origin + direction * t);
-        if(r < e) break;
-        if(count > MAX_STEP) break;
-        t += r;
-        count = count + 1;
-    }
-    RayInfo ri;
-    ri.value = r;
-    ri.dist = t;
-    ri.count = count;
-    return ri;
-}
-
-
-/**
- * @brief Main function to execute the scene.
- *
- * The main function responsible to indicate the correct color of the pixel in the fragColor.
- *
- */
-void main()
-{
-    //origin = vec3(3.0 *sin(iTimer), 0.0, 3.0 *cos(iTimer));
-    vec2 uv = normalizeSpace();  
-    vec3 direction = getDirection(uv);  
-    RayInfo ri = rayMarching(direction);
-
-    float p = 1 - (gl_FragCoord.y / iResolution.y);
-    vec3 color = vec3(0.4,0.4,1.0) + vec3(p);
-    
-    if(ri.dist < D) {
-        vec3 position = origin + direction * ri.dist;
-        vec3 normal = getNormal(position);
-        color =  normal;       
+    float d = stack[0].value;
+    if (abs(d) > 2 * R) {
+        CellInfo newCell;
+        newCell.offset = 0;
+        newCell.size = 0;
+        cellInfoOutput.data[cellIndex] = newCell;
+        farFieldValuesOutput.data[cellIndex] = sign(d) * (abs(d) - R);
+        return;
     }
 
-    fragColor = vec4(gammaCorrection(color),1.0);
+
+
+
+
+
+
+    int numGlobalActives = 0;
+    for (int i = cellParentInfo.size - 1; i >= 0; i--) {
+
+        bool isGlobalActive = false;
+         if (states[i].state == NODESTATE_INACTIVE) {
+            states[i].inactiveAncestors = true;
+         }else {
+            int parentIndex = states[i].parent;
+            bool hasInactiveAncestors = parentIndex >= 0 ? states[parentIndex].inactiveAncestors : false;
+            states[i].inactiveAncestors = hasInactiveAncestors;
+            isGlobalActive = states[i].state == NODESTATE_ACTIVE && !hasInactiveAncestors;
+
+            if(parentIndex >= 0){
+                if( states[parentIndex].state == NODESTATE_SKIPPED){
+                    states[i].parent = states[parentIndex].parent;
+                    states[i].sign *= states[parentIndex].sign;
+                }
+            }
+
+            if(isGlobalActive){
+                numGlobalActives++;
+            }
+        }
+    }
+
+    uint cellOffset = atomicAdd(numNodes, numGlobalActives);
+   
+    CellInfo newCell;
+    newCell.offset = int(cellOffset);
+    newCell.size = numGlobalActives;
+    cellInfoOutput.data[cellIndex] = newCell;
+
+    int oldToNewIndex[NODES_MAX];
+    for(int i=0; i<NODES_MAX; i++) oldToNewIndex[i] = -1;
+
+    int currentIdx = 0;
+    for (int i = 0; i < cellParentInfo.size; i++) {
+        if (states[i].state == NODESTATE_ACTIVE && !states[i].inactiveAncestors) {
+            oldToNewIndex[i] = currentIdx++;
+        }
+    }
+
+    int nodeIndex = 0;
+    for (int i = 0; i < cellParentInfo.size; i++) {
+        NodeState nodeState = states[i];
+        if (nodeState.state == NODESTATE_ACTIVE && !nodeState.inactiveAncestors) {
+            nodesOutput.data[cellOffset + nodeIndex] = nodes.data[cellParentInfo.offset + i];
+            nodesOutput.data[cellOffset + nodeIndex].parent = states[i].parent >= 0 ? oldToNewIndex[states[i].parent] : -1;
+            nodesOutput.data[cellOffset + nodeIndex].sign = states[i].sign;
+            nodeIndex++;
+        }
+    }
 }

@@ -1,7 +1,29 @@
+/**
+ * @brief UFABC logotype renderized in 2D.
+ *
+ * UFABC logo in the center of scene created using d2 approximation method in plane with sin.
+ *
+ * @author Edson Martinelli
+ * @date 2025
+ */
+
 #version 430 core
 
+/**
+ * @defgroup FragVariables Fragment Variables
+ * @brief Variables related to fragment shader input, output and uniforms.
+*/
+
+/**
+ * @ingroup FragVariables
+ * @brief Output color of the pixel.
+*/
 layout (location = 0) out vec4 fragColor;
 
+/**
+ * @ingroup FragVariables
+ * @brief Viewport and window resolution(x = width, y = height).
+*/
 layout (location = 0) uniform vec2 iResolution;
 
 /**
@@ -20,12 +42,32 @@ float smoothMin( float a, float b, float k ){
     return min(a, b) - h * h * (1.0 / (4.0 * k));
 }
 
+/**
+ * @brief Calculate Y coordenate of the linear equation and return the point.
+ *
+ * Calculate Y coordenate given a origin point in 2D, a slope and x coordenate. After that, this
+ * function returns a point with given x e calculate Y.
+ *
+ * @param [in] origin A point in the line.
+ * @param [in] m Equation slope.
+ * @param [in] x Second point X coordenate.
+ * @return A point (2D) with X coordenate and correspondent Y.
+ */
 vec2 calculateLinearPoint(vec2 origin, float m, float x){
     float c = (m * origin.x) - origin.y;
     float y = (m * x) - c;
     return vec2(x,y);
 }
 
+/**
+ * @brief Plane SDF with sin function used to cut. 
+ *
+ * A SDF function that use sin function to divide the entire world in two parts using a wave
+ * shape.
+ *
+ * @param [in] p Normalized 2D pixel position.
+ * @return The correct value of SDF at the position.
+ */
 float sdPlane(vec2 p){
     vec2 offset = vec2(-0.82, 0.32);
     p = p - offset;
@@ -36,20 +78,50 @@ float sdPlane(vec2 p){
     return f0 < 0 ? -d2 : d2;
 }
 
-float sdOBox(vec2 p, vec2 centerSideOrigin, float m, float xCenterEnd, float th){
-    vec2 centerSideEnd = calculateLinearPoint(centerSideOrigin, m, xCenterEnd);
-    float l = length(centerSideEnd-centerSideOrigin);
-    vec2  d = (centerSideEnd-centerSideOrigin)/l; 
-    vec2  q = p-(centerSideOrigin+centerSideEnd)*0.5; 
-          q = mat2(d.x,-d.y,d.y,d.x)*q; 
+/**
+ * @brief Oriented Box SDF.
+ *
+ * A oriented box function given by center point of its origin side, its slope, thickness and 
+ * x coordenate of end.
+ *
+ * @param [in] p Normalized 2D pixel position.
+ * @param [in] sideOriginCenter Center point of box origin side.
+ * @param [in] m Box slope.
+ * @param [in] xEndCenter X coordenate of the center point of box end side.
+ * @param [in] th Thickness of the box.
+ * @return The correct value of SDF at the position.
+ */
+float sdOBox(vec2 p, vec2 sideOriginCenter, float m, float xEndCenter, float th){
+    vec2 sideEndCenter = calculateLinearPoint(sideOriginCenter, m, xEndCenter);
+    float l = length(sideEndCenter-sideOriginCenter);
+    vec2  d = (sideEndCenter-sideOriginCenter)/l;
+    vec2  q = p-(sideOriginCenter+sideEndCenter)*0.5;
+          q = mat2(d.x,-d.y,d.y,d.x)*q;
           q = abs(q)-vec2(l*0.5,th);
-    return length(max(q,0.0)) + min(max(q.x,q.y),0.0);
+    return length(max(q,0.0)) + min(max(q.x,q.y),0.0);    
 }
 
+/**
+ * @brief Circle SDF.
+ *
+ * A simples Circle function representing a circle 2D positioned in space center (0,0,0).
+ *
+ * @param [in] p Normalized 2D pixel position.
+ * @param [in] r Circle radius.
+ * @return The correct value of SDF at the position.
+ */
 float sdCircle(vec2 p, float r){
     return length(p) - r;
 }
 
+/**
+ * @brief UFABC logo SDF.
+ *
+ * SDF function of UFABC Logo in 2D space.
+ *
+ * @param [in] p Normalized 3D space position.
+ * @return The correct value of SDF at the position.
+ */
 float sdf(vec2 p)
 {
     float insideRadius = 0.42;
@@ -88,7 +160,12 @@ float sdf(vec2 p)
     return final;
 }
 
-
+/**
+ * @brief Main function to execute the scene.
+ *
+ * The main function responsible to indicate the correct color of the pixel in the fragColor.
+ *
+ */
 void main()
 {
 	vec2 p = (2.0*gl_FragCoord.xy-iResolution.xy)/iResolution.y;
